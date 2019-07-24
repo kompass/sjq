@@ -1,0 +1,9 @@
+[package]
+name = "huge-json"
+version = "0.1.0"
+authors = ["Nicolas Kirchner <kirchner.nic@gmail.com>"]
+edition = "2018"
+
+
+[dependencies]
+combine = "3.8"
