@@ -60,7 +60,7 @@ impl FromStr for JsonPath {
 	type Err = ParseJsonPathError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let mut path = JsonPath::root();
+		let path = JsonPath::root();
 
 		let path_part_expr = string_expr().and(many::<Vec<_>, _>(between(token(b'['), token(b']'), number_expr())));
 
@@ -71,7 +71,7 @@ impl FromStr for JsonPath {
 
 		dbg!(parse_tree);
 
-		Ok(JsonPath::root())
+		Ok(path)
 	}
 }
 

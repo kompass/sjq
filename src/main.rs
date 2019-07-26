@@ -5,25 +5,23 @@ mod parse_basics;
 use std::io::stdin;
 use std::collections::HashMap;
 use std::iter::FromIterator;
-use std::str::FromStr;
 
 use combine::{parser, combine_parser_impl, combine_parse_partial, parse_mode};
-use combine::stream::{Stream, ReadStream, StreamOnce};
+use combine::stream::{Stream, ReadStream};
 use combine::stream::state::State;
 use combine::stream::buffered::BufferedStream;
-use combine::error::{ParseError};
+use combine::error::ParseError;
 
 use combine::parser::Parser;
-use combine::parser::byte::{digit, spaces};
-use combine::parser::item::{any, none_of, token, tokens};
-use combine::parser::repeat::{many, many1, sep_by};
-use combine::parser::sequence::{between};
-use combine::parser::combinator::from_str;
+use combine::parser::item::token;
+use combine::parser::repeat::sep_by;
+use combine::parser::sequence::between;
+
 use combine::parser::choice::choice;
 
 use crate::json_value::JsonValue;
 use crate::parse_basics::{lex, number_expr, string_expr, keyword_expr};
-use crate::json_path::JsonPath;
+
 
 fn number_val<I>() -> impl Parser<Input = I, Output = JsonValue>
 	where

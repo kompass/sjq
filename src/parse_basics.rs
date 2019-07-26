@@ -4,7 +4,7 @@ use combine::error::ParseError;
 use combine::parser::Parser;
 use combine::parser::byte::{digit, spaces};
 use combine::parser::item::{any, none_of, token, tokens};
-use combine::parser::repeat::{many, many1, sep_by};
+use combine::parser::repeat::{many, many1};
 use combine::parser::sequence::{between};
 use combine::parser::combinator::from_str;
 
