@@ -1,8 +1,11 @@
 mod json_value;
+mod json_path;
+mod parse_basics;
 
 use std::io::stdin;
 use std::collections::HashMap;
 use std::iter::FromIterator;
+use std::str::FromStr;
 
 use combine::{parser, combine_parser_impl, combine_parse_partial, parse_mode};
 use combine::stream::{Stream, ReadStream, StreamOnce};
@@ -19,30 +22,15 @@ use combine::parser::combinator::from_str;
 use combine::parser::choice::choice;
 
 use crate::json_value::JsonValue;
-
-fn lex<P>(p: P) -> impl Parser<Input = P::Input, Output = P::Output>
-where
-	P: Parser,
-    P::Input: Stream<Item = u8>,
-    <P::Input as StreamOnce>::Error: ParseError<
-        <P::Input as StreamOnce>::Item,
-        <P::Input as StreamOnce>::Range,
-        <P::Input as StreamOnce>::Position,
-	>,
-{
-    p.skip(spaces())
-}
+use crate::parse_basics::{lex, number_expr, string_expr, keyword_expr};
+use crate::json_path::JsonPath;
 
 fn number_val<I>() -> impl Parser<Input = I, Output = JsonValue>
 	where
 	I: Stream<Item = u8>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	let expr = many1::<Vec<u8>, _>(digit());
-	let expr_str = from_str(expr);
-	let json_val = expr_str.map(|s: String| JsonValue::Number(s.parse::<u64>().unwrap())); // TODO: check overflow
-
-	json_val
+	number_expr().map(|n: u64| JsonValue::Number(n))
 }
 
 fn string_val<I>() -> impl Parser<Input = I, Output = JsonValue>
@@ -50,11 +38,7 @@ where
 	I: Stream<Item = u8>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	let expr = between(token(b'"'), token(b'"'), many::<Vec<u8>, _>((token(b'\\').and(any()).map(|x| x.1)).or(none_of([b'"'].iter().cloned())))); // TODO: Check special escaped characters
-	let expr_str = from_str(expr);
-	let json_val = expr_str.map(|s: String| JsonValue::String(s));
-
-	json_val
+	string_expr().map(|s: String| JsonValue::String(s))
 }
 
 fn keyword_val<I>() -> impl Parser<Input = I, Output = JsonValue>
@@ -62,11 +46,11 @@ where
 	I: Stream<Item = u8>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	let null_val = tokens(|l, r| *l == r, "null".into(), b"null").map(|_| JsonValue::Null );
+	let null_val = keyword_expr("null").map(|_| JsonValue::Null );
 
-	let true_val = tokens(|l, r| *l == r, "true".into(), b"true").map(|_| JsonValue::Boolean(true) );
+	let true_val = keyword_expr("true").map(|_| JsonValue::Boolean(true) );
 
-	let false_val = tokens(|l, r| *l == r, "false".into(), b"false").map(|_| JsonValue::Boolean(false) );
+	let false_val = keyword_expr("false").map(|_| JsonValue::Boolean(false) );
 
 	choice((
 		null_val,
