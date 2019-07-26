@@ -41,6 +41,10 @@ impl JsonPath {
 		JsonPath(Vec::new())
 	}
 
+	pub fn is_root(&self) -> bool {
+		self.0.is_empty()
+	}
+
 	pub fn push_node(&mut self, node_name: String) {
 		self.0.push(JsonPathStage::Node(node_name));
 	}
@@ -69,4 +73,19 @@ impl FromStr for JsonPath {
 
 		Ok(JsonPath::root())
 	}
-} 
+}
+
+#[cfg(test)]
+mod tests{
+	use super::*;
+
+	#[test]
+	fn root_is_root() {
+		assert!(JsonPath::root().is_root());
+	}
+
+	#[test]
+	fn json_path_from_str() {
+		assert!(JsonPath::from_str(".").unwrap().is_root());
+	}
+}

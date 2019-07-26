@@ -55,3 +55,61 @@ pub fn keyword_expr<I>(keyword: &'static str) -> impl Parser<Input = I, Output =
 {
 	tokens(|l, r| *l == r, keyword.into(), keyword.as_bytes()).map(|_| () )
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use combine::stream::IteratorStream;
+	use combine::stream::state::State;
+	use combine::stream::buffered::BufferedStream;
+
+	macro_rules! assert_parse_exprs {
+		($parser:expr, $exprs_and_expected:expr) => {
+			for (expr, expected) in $exprs_and_expected {
+				let stream = BufferedStream::new(State::new(IteratorStream::new(expr.into_iter())), 1);
+
+				assert_eq!($parser.parse(stream).unwrap().0, expected);
+			}
+		};
+	}
+
+    #[test]
+    fn parse_string() {
+    	let expected = vec![
+    		"guillotine",
+    		"UpPeR",
+    		"Let's make revolution!",
+    	];
+
+    	let exprs_and_expected: Vec<(Vec<u8>, _)> =
+    		expected
+    		.into_iter()
+    		.map(|e| (
+    			format!("\"{}\"", e).as_bytes().to_owned(),
+    			String::from(e)
+    		)).collect();
+
+        assert_parse_exprs!(string_expr(), exprs_and_expected);
+    }
+
+    #[test]
+    fn parse_number() {
+    	let expected = vec![
+    		0u64,
+    		1u64,
+    		9u64,
+    		10u64,
+    		123456789u64,
+    	];
+
+    	let exprs_and_expected: Vec<(Vec<u8>, _)> =
+    		expected
+    		.into_iter()
+    		.map(|e| (
+    			e.to_string().as_bytes().to_owned(),
+    			e
+    		)).collect();
+
+        assert_parse_exprs!(number_expr(), exprs_and_expected);
+    }
+}
