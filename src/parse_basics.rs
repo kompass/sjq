@@ -2,7 +2,7 @@ use combine::stream::{Stream, StreamOnce};
 use combine::error::ParseError;
 
 use combine::parser::Parser;
-use combine::parser::byte::{digit, spaces};
+use combine::parser::byte::{digit, letter, alpha_num, spaces};
 use combine::parser::item::{any, none_of, token, tokens};
 use combine::parser::repeat::{many, many1};
 use combine::parser::sequence::{between};
@@ -44,6 +44,17 @@ where
 			.or(none_of([b'"'].iter().cloned()))
 		)
 	); // TODO: Check special escaped characters
+
+	from_str(expr)
+}
+
+pub fn ident_expr<I>() -> impl Parser<Input = I, Output = String>
+	where
+	I: Stream<Item = u8>,
+	I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+	let expr = letter().and(many::<Vec<_>, _>(alpha_num()))
+		.map(|(first, rest)| { let mut val = rest.clone(); val.insert(0, first); val });
 
 	from_str(expr)
 }
@@ -111,5 +122,25 @@ mod tests {
     		)).collect();
 
         assert_parse_exprs!(number_expr(), exprs_and_expected);
+    }
+
+    #[test]
+    fn parse_ident() {
+    	let expected = vec![
+    		"abc",
+    		"askMe",
+    		"Mask",
+    		"number1",
+    	];
+
+    	let exprs_and_expected: Vec<(Vec<u8>, _)> =
+    		expected
+    		.into_iter()
+    		.map(|e| (
+    			e.to_string().as_bytes().to_owned(),
+    			e.to_string()
+    		)).collect();
+
+    	assert_parse_exprs!(ident_expr(), exprs_and_expected);
     }
 }

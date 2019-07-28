@@ -5,7 +5,7 @@ use combine::parser::item::token;
 use combine::parser::repeat::{many, sep_by};
 use combine::parser::sequence::between;
 
-use crate::parse_basics::{string_expr, number_expr};
+use crate::parse_basics::{string_expr, number_expr, ident_expr};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseJsonPathError {
@@ -18,10 +18,10 @@ enum JsonPathErrorKind {
 	Invalid,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum JsonPathStage {
 	Node(String),
-	Element(u64),
+	Index(u64),
 }
 
 impl JsonPathStage {
@@ -31,9 +31,16 @@ impl JsonPathStage {
 			_ => false
 		}
 	}
+
+	fn is_index(&self) -> bool {
+		match self {
+			&JsonPathStage::Index(_) => true,
+			_ => false
+		}
+	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsonPath(Vec<JsonPathStage>);
 
 impl JsonPath {
@@ -54,22 +61,46 @@ impl JsonPath {
 
 		self.0.pop();
 	}
+
+	pub fn push_index(&mut self, index: u64) {
+		self.0.push(JsonPathStage::Index(index));
+	}
+
+	pub fn inc_index(&mut self) {
+		if let JsonPathStage::Index(ref mut i) = self.0.last_mut().unwrap() {
+			*i += 1;
+		} else {
+			panic!("A node in a JsonPath can't be incremented.");
+		}
+	}
+
+	pub fn pop_index(&mut self) {
+		assert!(self.0.last().map_or(false, |x| x.is_index()));
+
+		self.0.pop();
+	}
 }
 
 impl FromStr for JsonPath {
 	type Err = ParseJsonPathError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let path = JsonPath::root();
+		let mut path = JsonPath::root();
 
-		let path_part_expr = string_expr().and(many::<Vec<_>, _>(between(token(b'['), token(b']'), number_expr())));
+		let path_part_expr = string_expr().or(ident_expr()).and(many::<Vec<_>, _>(between(token(b'['), token(b']'), number_expr())));
 
 		let mut path_expr = token(b'.').with(sep_by::<Vec<_>, _, _>(path_part_expr, token(b'.')));
 
 		let (parse_tree, rest) = path_expr.parse(s.as_bytes()).unwrap();
 		assert!(rest.is_empty());
 
-		dbg!(parse_tree);
+		for node in parse_tree {
+			path.push_node(node.0);
+
+			for elem in node.1 {
+				path.push_index(elem);
+			}
+		}
 
 		Ok(path)
 	}
@@ -87,5 +118,21 @@ mod tests{
 	#[test]
 	fn json_path_from_str() {
 		assert!(JsonPath::from_str(".").unwrap().is_root());
+		assert_eq!(JsonPath::from_str(".abc").unwrap(), JsonPath(vec![JsonPathStage::Node("abc".to_string())]));
+		assert_eq!(JsonPath::from_str(".abc.defgh").unwrap(), JsonPath(vec![
+			JsonPathStage::Node("abc".to_string()),
+			JsonPathStage::Node("defgh".to_string())
+		]));
+		assert_eq!(JsonPath::from_str(".abc[394].defgh").unwrap(), JsonPath(vec![
+			JsonPathStage::Node("abc".to_string()),
+			JsonPathStage::Index(394u64),
+			JsonPathStage::Node("defgh".to_string())
+		]));
+		assert_eq!(JsonPath::from_str(".abc[394][9380].defgh").unwrap(), JsonPath(vec![
+			JsonPathStage::Node("abc".to_string()),
+			JsonPathStage::Index(394u64),
+			JsonPathStage::Index(9380u64),
+			JsonPathStage::Node("defgh".to_string())
+		]));
 	}
 }
