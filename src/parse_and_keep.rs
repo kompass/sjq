@@ -106,3 +106,26 @@ parser!{
         keep_json_()
     }
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use combine::stream::IteratorStream;
+	use combine::stream::state::State;
+	use combine::stream::buffered::BufferedStream;
+
+	#[test]
+	fn parse_short_complex() {
+		let expr = r#"{"pomme" : { "taille" : 12345, "couleur": "jaune" }, "random_array": [1, 2, 3, "word" ]}"#.as_bytes().to_owned();
+		let expected = JsonValue::Object([
+        	("pomme".to_string(), JsonValue::Object([
+               	("taille".to_string(), JsonValue::Number(12345)),
+               	("couleur".to_string(), JsonValue::String("jaune".to_string()))
+        	].iter().cloned().collect())),
+        	("random_array".to_string(), JsonValue::Array(vec![JsonValue::Number(1), JsonValue::Number(2), JsonValue::Number(3), JsonValue::String("word".to_string())])),
+    	].iter().cloned().collect());
+
+		let stream = BufferedStream::new(State::new(IteratorStream::new(expr.into_iter())), 1);
+        assert_eq!(keep_json().parse(stream).unwrap().0, expected);
+	}
+}
