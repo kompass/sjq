@@ -116,7 +116,8 @@ mod tests {
 
 	#[test]
 	fn parse_short_complex() {
-		let expr = r#"{"pomme" : { "taille" : 12345, "couleur": "jaune" }, "random_array": [1, 2, 3, "word" ]}"#.as_bytes().to_owned();
+		let expr = r#"{"pomme" : { "taille" :          12345,   "couleur": "jaune" },
+		"random_array": [1, 2, 3    , "word" ]}"#.as_bytes().to_owned();
 		let expected = JsonValue::Object([
         	("pomme".to_string(), JsonValue::Object([
                	("taille".to_string(), JsonValue::Number(12345)),
