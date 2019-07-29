@@ -12,7 +12,7 @@ use combine::parser::sequence::between;
 use combine::parser::choice::choice;
 
 use crate::json_value::JsonValue;
-use crate::parse_basics::{lex, number_expr, string_expr, keyword_expr};
+use crate::parse_basics::{number_expr, string_expr, keyword_expr};
 
 
 fn throw_number<I>() -> impl Parser<Input = I, Output = ()>
@@ -54,7 +54,7 @@ where
 	I: Stream<Item = u8>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	between(token(b'['), token(b']'), sep_by::<Vec<JsonValue>, _, _>(throw_json(), lex(token(b','))).map(|_| () ))
+	between(token(b'['), token(b']'), sep_by::<Vec<()>, _, _>(throw_json(), lex(token(b','))).map(|_| () ))
 }
 
 parser!{
@@ -70,9 +70,9 @@ where
 	I: Stream<Item = u8>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	let field = string_val().skip(lex(token(b':'))).and(throw_json());
+	let field = string_expr().skip(lex(token(b':'))).and(throw_json());
 
-	let expr = between(token(b'{'), token(b'}'), sep_by::<Vec<()>, _, _>(field, lex(token(b','))));
+	let expr = between(token(b'{'), token(b'}'), sep_by::<Vec<(String, ())>, _, _>(field, lex(token(b','))));
 
 	expr.map(|_| () )
 }

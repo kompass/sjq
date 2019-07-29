@@ -79,6 +79,10 @@ impl JsonPath {
 
 		self.0.pop();
 	}
+
+	pub fn is_part(&self, other: &JsonPath) -> bool {
+		other.0.starts_with(&self.0)
+	}
 }
 
 impl FromStr for JsonPath {
@@ -134,5 +138,14 @@ mod tests{
 			JsonPathStage::Index(9380u64),
 			JsonPathStage::Node("defgh".to_string())
 		]));
+	}
+
+	#[test]
+	fn is_part() {
+		assert_eq!(JsonPath::from_str(".").unwrap().is_part(&JsonPath::from_str(".abc").unwrap()), true);
+		assert_eq!(JsonPath::from_str(".abc").unwrap().is_part(&JsonPath::from_str(".").unwrap()), false);
+		assert_eq!(JsonPath::from_str(".abc").unwrap().is_part(&JsonPath::from_str(".abc").unwrap()), true);
+		assert_eq!(JsonPath::from_str(".abc").unwrap().is_part(&JsonPath::from_str(".abc[1]").unwrap()), true);
+		assert_eq!(JsonPath::from_str(".abc[2]").unwrap().is_part(&JsonPath::from_str(".abc[1]").unwrap()), false);
 	}
 }

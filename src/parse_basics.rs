@@ -8,18 +8,6 @@ use combine::parser::repeat::{many, many1};
 use combine::parser::sequence::{between};
 use combine::parser::combinator::from_str;
 
-pub fn lex<P>(p: P) -> impl Parser<Input = P::Input, Output = P::Output>
-where
-	P: Parser,
-    P::Input: Stream<Item = u8>,
-    <P::Input as StreamOnce>::Error: ParseError<
-        <P::Input as StreamOnce>::Item,
-        <P::Input as StreamOnce>::Range,
-        <P::Input as StreamOnce>::Position,
-	>,
-{
-    p.skip(spaces())
-}
 
 pub fn number_expr<I>() -> impl Parser<Input = I, Output = u64>
 	where
@@ -65,6 +53,59 @@ pub fn keyword_expr<I>(keyword: &'static str) -> impl Parser<Input = I, Output =
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
 	tokens(|l, r| *l == r, keyword.into(), keyword.as_bytes()).map(|_| () )
+}
+
+fn lex<P>(p: P) -> impl Parser<Input = P::Input, Output = P::Output>
+where
+    P: Parser,
+    P::Input: Stream<Item = u8>,
+    <P::Input as StreamOnce>::Error: ParseError<
+        <P::Input as StreamOnce>::Item,
+        <P::Input as StreamOnce>::Range,
+        <P::Input as StreamOnce>::Position,
+    >,
+{
+    p.skip(spaces())
+}
+
+pub fn number_lex<I>() -> impl Parser<Input = I, Output = u64>
+    where
+    I: Stream<Item = u8>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    lex(number_expr())
+}
+
+pub fn string_lex<I>() -> impl Parser<Input = I, Output = String>
+where
+    I: Stream<Item = u8>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    lex(string_expr())
+}
+
+pub fn ident_lex<I>() -> impl Parser<Input = I, Output = String>
+    where
+    I: Stream<Item = u8>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    lex(ident_expr())
+}
+
+pub fn keyword_lex<I>(keyword: &'static str) -> impl Parser<Input = I, Output = ()>
+    where
+    I: Stream<Item = u8>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    lex(keyword_expr(keyword))
+}
+
+pub fn token_lex<I>(c: u8) -> impl Parser<Input = I, Output = ()>
+    where
+    I: Stream<Item = u8>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    lex(token(c)).map(|_| () )
 }
 
 #[cfg(test)]
