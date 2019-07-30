@@ -6,6 +6,7 @@ mod parse_basics;
 mod unicode_stream;
 
 use std::io::stdin;
+use std::io::BufReader;
 
 use combine::parser::Parser;
 use combine::stream::buffered::BufferedStream;
@@ -17,7 +18,9 @@ use crate::parse_and_keep::keep_json;
 use crate::unicode_stream::iter_from_read;
 
 fn main() {
-	let stream = BufferedStream::new(State::new(IteratorStream::new(iter_from_read(stdin()))), 1);
+	let buffered_stdin = BufReader::new(stdin());
+	let char_iter = iter_from_read(buffered_stdin);
+	let stream = BufferedStream::new(State::new(IteratorStream::new(char_iter)), 1);
 
 	let value: Result<(JsonValue, _), _> = keep_json().easy_parse(stream);
     dbg!(value.unwrap().0);
