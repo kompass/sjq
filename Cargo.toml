@@ -8,3 +8,4 @@ readme = "README.md"
 
 [dependencies]
 combine = "3.8"
+unicode_reader = "1.0"

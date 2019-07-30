@@ -16,7 +16,7 @@ use crate::parse_basics::{number_lex, string_lex, keyword_lex, token_lex};
 
 fn keep_number<I>() -> impl Parser<Input = I, Output = JsonValue>
 	where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
 	number_lex().map(|n: u64| JsonValue::Number(n))
@@ -24,7 +24,7 @@ fn keep_number<I>() -> impl Parser<Input = I, Output = JsonValue>
 
 fn keep_string<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
 	string_lex().map(|s: String| JsonValue::String(s))
@@ -32,7 +32,7 @@ where
 
 fn keep_keyword<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
 	let null_val = keyword_lex("null").map(|_| JsonValue::Null );
@@ -50,15 +50,15 @@ where
 
 fn keep_array_<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	between(token_lex(b'['), token_lex(b']'), sep_by::<Vec<JsonValue>, _, _>(keep_json(), token_lex(b','))).map(|v| JsonValue::Array(v))
+	between(token_lex('['), token_lex(']'), sep_by::<Vec<JsonValue>, _, _>(keep_json(), token_lex(','))).map(|v| JsonValue::Array(v))
 }
 
 parser!{
     fn keep_array[I]()(I) -> JsonValue
-    where [I: Stream<Item = u8>]
+    where [I: Stream<Item = char>]
     {
         keep_array_()
     }
@@ -66,12 +66,12 @@ parser!{
 
 fn keep_object_<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	let field = string_lex().skip(token_lex(b':')).and(keep_json());
+	let field = string_lex().skip(token_lex(':')).and(keep_json());
 
-	let expr = between(token_lex(b'{'), token_lex(b'}'), sep_by::<Vec<(String, JsonValue)>, _, _>(field, token_lex(b',')));
+	let expr = between(token_lex('{'), token_lex('}'), sep_by::<Vec<(String, JsonValue)>, _, _>(field, token_lex(',')));
 	let value = expr.map(|v| JsonValue::Object(HashMap::from_iter(v)));
 
 	value
@@ -79,7 +79,7 @@ where
 
 parser!{
     fn keep_object[I]()(I) -> JsonValue
-    where [I: Stream<Item = u8>]
+    where [I: Stream<Item = char>]
     {
         keep_object_()
     }
@@ -87,7 +87,7 @@ parser!{
 
 fn keep_json_<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
 	choice((
@@ -101,7 +101,7 @@ where
 
 parser!{
     pub fn keep_json[I]()(I) -> JsonValue
-    where [I: Stream<Item = u8>]
+    where [I: Stream<Item = char>]
     {
         keep_json_()
     }
@@ -117,7 +117,7 @@ mod tests {
 	#[test]
 	fn parse_short_complex() {
 		let expr = r#"{"pomme" : { "taille" :          12345,   "couleur": "jaune" },
-		"random_array": [1, 2, 3    , "word" ]}"#.as_bytes().to_owned();
+		"random_array": [1, 2, 3    , "word" ]}"#;
 		let expected = JsonValue::Object([
         	("pomme".to_string(), JsonValue::Object([
                	("taille".to_string(), JsonValue::Number(12345)),
@@ -126,7 +126,7 @@ mod tests {
         	("random_array".to_string(), JsonValue::Array(vec![JsonValue::Number(1), JsonValue::Number(2), JsonValue::Number(3), JsonValue::String("word".to_string())])),
     	].iter().cloned().collect());
 
-		let stream = BufferedStream::new(State::new(IteratorStream::new(expr.into_iter())), 1);
+		let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1);
         assert_eq!(keep_json().parse(stream).unwrap().0, expected);
 	}
 }

@@ -12,7 +12,7 @@ use crate::parse_basics::{number_lex, string_lex, keyword_lex, token_lex};
 
 fn throw_number<I>() -> impl Parser<Input = I, Output = ()>
 	where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
 	number_lex().map(|_| ())
@@ -20,7 +20,7 @@ fn throw_number<I>() -> impl Parser<Input = I, Output = ()>
 
 fn throw_string<I>() -> impl Parser<Input = I, Output = ()>
 where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
 	string_lex().map(|_| ())
@@ -28,7 +28,7 @@ where
 
 fn throw_keyword<I>() -> impl Parser<Input = I, Output = ()>
 where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
 	let null_val = keyword_lex("null").map(|_| () );
@@ -46,15 +46,15 @@ where
 
 fn throw_array_<I>() -> impl Parser<Input = I, Output = ()>
 where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	between(token_lex(b'['), token_lex(b']'), sep_by::<Vec<()>, _, _>(throw_json(), token_lex(b',')).map(|_| () ))
+	between(token_lex('['), token_lex(']'), sep_by::<Vec<()>, _, _>(throw_json(), token_lex(',')).map(|_| () ))
 }
 
 parser!{
     fn throw_array[I]()(I) -> ()
-    where [I: Stream<Item = u8>]
+    where [I: Stream<Item = char>]
     {
         throw_array_()
     }
@@ -62,19 +62,19 @@ parser!{
 
 fn throw_object_<I>() -> impl Parser<Input = I, Output = ()>
 where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	let field = string_lex().skip(token_lex(b':')).and(throw_json()).map(|_| () );
+	let field = string_lex().skip(token_lex(':')).and(throw_json()).map(|_| () );
 
-	let expr = between(token_lex(b'{'), token_lex(b'}'), sep_by::<Vec<()>, _, _>(field, token_lex(b',')).map(|_| () ));
+	let expr = between(token_lex('{'), token_lex('}'), sep_by::<Vec<()>, _, _>(field, token_lex(',')).map(|_| () ));
 
 	expr
 }
 
 parser!{
     fn throw_object[I]()(I) -> ()
-    where [I: Stream<Item = u8>]
+    where [I: Stream<Item = char>]
     {
         throw_object_()
     }
@@ -82,7 +82,7 @@ parser!{
 
 fn throw_json_<I>() -> impl Parser<Input = I, Output = ()>
 where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
 	choice((
@@ -96,7 +96,7 @@ where
 
 parser!{
     pub fn throw_json[I]()(I) -> ()
-    where [I: Stream<Item = u8>]
+    where [I: Stream<Item = char>]
     {
         throw_json_()
     }
@@ -112,9 +112,9 @@ mod tests {
 	#[test]
 	fn parse_short_complex() {
 		let expr = r#"{"pomme" : { "taille" :          12345,   "couleur": "jaune" },
-		"random_array": [1, 2, 3    , "word" ]}"#.as_bytes().to_owned();
+		"random_array": [1, 2, 3    , "word" ]}"#;
 
-		let stream = BufferedStream::new(State::new(IteratorStream::new(expr.into_iter())), 1);
+		let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1);
         assert_eq!(throw_json().parse(stream).unwrap().0, ());
 	}
 }

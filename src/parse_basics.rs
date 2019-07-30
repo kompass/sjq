@@ -2,63 +2,62 @@ use combine::stream::{Stream, StreamOnce};
 use combine::error::ParseError;
 
 use combine::parser::Parser;
-use combine::parser::byte::{digit, letter, alpha_num, spaces};
+use combine::parser::char::{digit, letter, alpha_num, spaces};
 use combine::parser::item::{any, none_of, token, tokens};
 use combine::parser::repeat::{many, many1};
 use combine::parser::sequence::{between};
-use combine::parser::combinator::from_str;
 
 
 pub fn number_expr<I>() -> impl Parser<Input = I, Output = u64>
 	where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	let expr = many1::<Vec<u8>, _>(digit()); // TODO: accept neg and float
+	let expr = many1::<String, _>(digit()); // TODO: accept neg and float
 
-	from_str(expr).map(|s: String| s.parse::<u64>().unwrap()) // TODO: check overflow
+	expr.map(|s: String| s.parse::<u64>().unwrap()) // TODO: check overflow
 }
 
 pub fn string_expr<I>() -> impl Parser<Input = I, Output = String>
 where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
 	let expr = between(
-		token(b'"'),
-		token(b'"'),
-		many::<Vec<u8>, _>(
-			(token(b'\\').and(any()).map(|x| x.1))
-			.or(none_of([b'"'].iter().cloned()))
+		token('"'),
+		token('"'),
+		many::<String, _>(
+			(token('\\').and(any()).map(|x| x.1))
+			.or(none_of(['"'].iter().cloned()))
 		)
 	); // TODO: Check special escaped characters
 
-	from_str(expr)
+	expr
 }
 
 pub fn ident_expr<I>() -> impl Parser<Input = I, Output = String>
 	where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	let expr = letter().and(many::<Vec<_>, _>(alpha_num()))
+	let expr = letter().and(many::<String, _>(alpha_num()))
 		.map(|(first, rest)| { let mut val = rest.clone(); val.insert(0, first); val });
 
-	from_str(expr)
+	expr
 }
 
 pub fn keyword_expr<I>(keyword: &'static str) -> impl Parser<Input = I, Output = ()>
 	where
-	I: Stream<Item = u8>,
+	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	tokens(|l, r| *l == r, keyword.into(), keyword.as_bytes()).map(|_| () )
+	tokens(|l, r| l == r, keyword.into(), keyword.chars()).map(|_| () )
 }
 
 fn lex<P>(p: P) -> impl Parser<Input = P::Input, Output = P::Output>
 where
     P: Parser,
-    P::Input: Stream<Item = u8>,
+    P::Input: Stream<Item = char>,
     <P::Input as StreamOnce>::Error: ParseError<
         <P::Input as StreamOnce>::Item,
         <P::Input as StreamOnce>::Range,
@@ -70,7 +69,7 @@ where
 
 pub fn number_lex<I>() -> impl Parser<Input = I, Output = u64>
     where
-    I: Stream<Item = u8>,
+    I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(number_expr())
@@ -78,7 +77,7 @@ pub fn number_lex<I>() -> impl Parser<Input = I, Output = u64>
 
 pub fn string_lex<I>() -> impl Parser<Input = I, Output = String>
 where
-    I: Stream<Item = u8>,
+    I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(string_expr())
@@ -86,7 +85,7 @@ where
 
 pub fn ident_lex<I>() -> impl Parser<Input = I, Output = String>
     where
-    I: Stream<Item = u8>,
+    I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(ident_expr())
@@ -94,15 +93,15 @@ pub fn ident_lex<I>() -> impl Parser<Input = I, Output = String>
 
 pub fn keyword_lex<I>(keyword: &'static str) -> impl Parser<Input = I, Output = ()>
     where
-    I: Stream<Item = u8>,
+    I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(keyword_expr(keyword))
 }
 
-pub fn token_lex<I>(c: u8) -> impl Parser<Input = I, Output = ()>
+pub fn token_lex<I>(c: char) -> impl Parser<Input = I, Output = ()>
     where
-    I: Stream<Item = u8>,
+    I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(token(c)).map(|_| () )
@@ -118,7 +117,7 @@ mod tests {
 	macro_rules! assert_parse_exprs {
 		($parser:expr, $exprs_and_expected:expr) => {
 			for (expr, expected) in $exprs_and_expected {
-				let stream = BufferedStream::new(State::new(IteratorStream::new(expr.into_iter())), 1);
+				let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1);
 
 				assert_eq!($parser.parse(stream).unwrap().0, expected);
 			}
@@ -133,11 +132,11 @@ mod tests {
     		"Let's make revolution!",
     	];
 
-    	let exprs_and_expected: Vec<(Vec<u8>, _)> =
+    	let exprs_and_expected: Vec<(String, _)> =
     		expected
     		.into_iter()
     		.map(|e| (
-    			format!("\"{}\"", e).as_bytes().to_owned(),
+    			format!("\"{}\"", e),
     			String::from(e)
     		)).collect();
 
@@ -154,11 +153,11 @@ mod tests {
     		123456789u64,
     	];
 
-    	let exprs_and_expected: Vec<(Vec<u8>, _)> =
+    	let exprs_and_expected: Vec<(String, _)> =
     		expected
     		.into_iter()
     		.map(|e| (
-    			e.to_string().as_bytes().to_owned(),
+    			e.to_string(),
     			e
     		)).collect();
 
@@ -174,11 +173,11 @@ mod tests {
     		"number1",
     	];
 
-    	let exprs_and_expected: Vec<(Vec<u8>, _)> =
+    	let exprs_and_expected: Vec<(String, _)> =
     		expected
     		.into_iter()
     		.map(|e| (
-    			e.to_string().as_bytes().to_owned(),
+    			e.to_string(),
     			e.to_string()
     		)).collect();
 

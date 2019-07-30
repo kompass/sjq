@@ -91,11 +91,11 @@ impl FromStr for JsonPath {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let mut path = JsonPath::root();
 
-		let path_part_expr = string_expr().or(ident_expr()).and(many::<Vec<_>, _>(between(token(b'['), token(b']'), number_expr())));
+		let path_part_expr = string_expr().or(ident_expr()).and(many::<Vec<_>, _>(between(token('['), token(']'), number_expr())));
 
-		let mut path_expr = token(b'.').with(sep_by::<Vec<_>, _, _>(path_part_expr, token(b'.')));
+		let mut path_expr = token('.').with(sep_by::<Vec<_>, _, _>(path_part_expr, token('.')));
 
-		let (parse_tree, rest) = path_expr.parse(s.as_bytes()).unwrap();
+		let (parse_tree, rest) = path_expr.parse(s).unwrap();
 		assert!(rest.is_empty());
 
 		for node in parse_tree {
