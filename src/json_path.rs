@@ -1,15 +1,15 @@
-use std::str::FromStr;
 use combine::parser::Parser;
+use std::str::FromStr;
 
 use combine::parser::item::token;
 use combine::parser::repeat::{many, sep_by};
 use combine::parser::sequence::between;
 
-use crate::parse_basics::{string_expr, number_expr, ident_expr};
+use crate::parse_basics::{ident_expr, number_expr, string_expr};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseJsonPathError {
-    kind: JsonPathErrorKind
+    kind: JsonPathErrorKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,14 +28,14 @@ impl JsonPathStage {
     fn is_node(&self) -> bool {
         match self {
             &JsonPathStage::Node(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
     fn is_index(&self) -> bool {
         match self {
             &JsonPathStage::Index(_) => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -95,7 +95,13 @@ impl FromStr for JsonPath {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut path = JsonPath::root();
 
-        let path_part_expr = string_expr().or(ident_expr()).and(many::<Vec<_>, _>(between(token('['), token(']'), number_expr())));
+        let path_part_expr = string_expr()
+            .or(ident_expr())
+            .and(many::<Vec<_>, _>(between(
+                token('['),
+                token(']'),
+                number_expr(),
+            )));
 
         let mut path_expr = token('.').with(sep_by::<Vec<_>, _, _>(path_part_expr, token('.')));
 
@@ -115,7 +121,7 @@ impl FromStr for JsonPath {
 }
 
 #[cfg(test)]
-mod tests{
+mod tests {
     use super::*;
 
     #[test]
@@ -126,30 +132,67 @@ mod tests{
     #[test]
     fn json_path_from_str() {
         assert!(JsonPath::from_str(".").unwrap().is_root());
-        assert_eq!(JsonPath::from_str(".abc").unwrap(), JsonPath(vec![JsonPathStage::Node("abc".to_string())]));
-        assert_eq!(JsonPath::from_str(".abc.defgh").unwrap(), JsonPath(vec![
-            JsonPathStage::Node("abc".to_string()),
-            JsonPathStage::Node("defgh".to_string())
-        ]));
-        assert_eq!(JsonPath::from_str(".abc[394].defgh").unwrap(), JsonPath(vec![
-            JsonPathStage::Node("abc".to_string()),
-            JsonPathStage::Index(394u64),
-            JsonPathStage::Node("defgh".to_string())
-        ]));
-        assert_eq!(JsonPath::from_str(".abc[394][9380].defgh").unwrap(), JsonPath(vec![
-            JsonPathStage::Node("abc".to_string()),
-            JsonPathStage::Index(394u64),
-            JsonPathStage::Index(9380u64),
-            JsonPathStage::Node("defgh".to_string())
-        ]));
+        assert_eq!(
+            JsonPath::from_str(".abc").unwrap(),
+            JsonPath(vec![JsonPathStage::Node("abc".to_string())])
+        );
+        assert_eq!(
+            JsonPath::from_str(".abc.defgh").unwrap(),
+            JsonPath(vec![
+                JsonPathStage::Node("abc".to_string()),
+                JsonPathStage::Node("defgh".to_string())
+            ])
+        );
+        assert_eq!(
+            JsonPath::from_str(".abc[394].defgh").unwrap(),
+            JsonPath(vec![
+                JsonPathStage::Node("abc".to_string()),
+                JsonPathStage::Index(394u64),
+                JsonPathStage::Node("defgh".to_string())
+            ])
+        );
+        assert_eq!(
+            JsonPath::from_str(".abc[394][9380].defgh").unwrap(),
+            JsonPath(vec![
+                JsonPathStage::Node("abc".to_string()),
+                JsonPathStage::Index(394u64),
+                JsonPathStage::Index(9380u64),
+                JsonPathStage::Node("defgh".to_string())
+            ])
+        );
     }
 
     #[test]
     fn is_part() {
-        assert_eq!(JsonPath::from_str(".").unwrap().is_part(&JsonPath::from_str(".abc").unwrap()), true);
-        assert_eq!(JsonPath::from_str(".abc").unwrap().is_part(&JsonPath::from_str(".").unwrap()), false);
-        assert_eq!(JsonPath::from_str(".abc").unwrap().is_part(&JsonPath::from_str(".abc").unwrap()), true);
-        assert_eq!(JsonPath::from_str(".abc").unwrap().is_part(&JsonPath::from_str(".abc[1]").unwrap()), true);
-        assert_eq!(JsonPath::from_str(".abc[2]").unwrap().is_part(&JsonPath::from_str(".abc[1]").unwrap()), false);
+        assert_eq!(
+            JsonPath::from_str(".")
+                .unwrap()
+                .is_part(&JsonPath::from_str(".abc").unwrap()),
+            true
+        );
+        assert_eq!(
+            JsonPath::from_str(".abc")
+                .unwrap()
+                .is_part(&JsonPath::from_str(".").unwrap()),
+            false
+        );
+        assert_eq!(
+            JsonPath::from_str(".abc")
+                .unwrap()
+                .is_part(&JsonPath::from_str(".abc").unwrap()),
+            true
+        );
+        assert_eq!(
+            JsonPath::from_str(".abc")
+                .unwrap()
+                .is_part(&JsonPath::from_str(".abc[1]").unwrap()),
+            true
+        );
+        assert_eq!(
+            JsonPath::from_str(".abc[2]")
+                .unwrap()
+                .is_part(&JsonPath::from_str(".abc[1]").unwrap()),
+            false
+        );
     }
 }

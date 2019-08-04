@@ -1,17 +1,16 @@
-use combine::{parser, combine_parser_impl, combine_parse_partial, parse_mode};
-use combine::stream::{Stream};
 use combine::error::ParseError;
+use combine::stream::Stream;
+use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
 
-use combine::parser::Parser;
+use combine::parser::choice::choice;
 use combine::parser::repeat::sep_by;
 use combine::parser::sequence::between;
-use combine::parser::choice::choice;
+use combine::parser::Parser;
 
-use crate::parse_basics::{number_lex, string_lex, keyword_lex, token_lex};
-
+use crate::parse_basics::{keyword_lex, number_lex, string_lex, token_lex};
 
 pub fn throw_number<I>() -> impl Parser<Input = I, Output = ()>
-    where
+where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -31,17 +30,13 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let null_val = keyword_lex("null").map(|_| () );
+    let null_val = keyword_lex("null").map(|_| ());
 
-    let true_val = keyword_lex("true").map(|_| () );
+    let true_val = keyword_lex("true").map(|_| ());
 
-    let false_val = keyword_lex("false").map(|_| () );
+    let false_val = keyword_lex("false").map(|_| ());
 
-    choice((
-        null_val,
-        true_val,
-        false_val,
-    ))
+    choice((null_val, true_val, false_val))
 }
 
 fn throw_array_<I>() -> impl Parser<Input = I, Output = ()>
@@ -49,10 +44,14 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(token_lex('['), token_lex(']'), sep_by::<(), _, _>(throw_json(), token_lex(',')))
+    between(
+        token_lex('['),
+        token_lex(']'),
+        sep_by::<(), _, _>(throw_json(), token_lex(',')),
+    )
 }
 
-parser!{
+parser! {
     fn throw_array[I]()(I) -> ()
     where [I: Stream<Item = char>]
     {
@@ -67,12 +66,16 @@ where
 {
     let field = string_lex().skip(token_lex(':')).with(throw_json());
 
-    let expr = between(token_lex('{'), token_lex('}'), sep_by::<(), _, _>(field, token_lex(',')));
+    let expr = between(
+        token_lex('{'),
+        token_lex('}'),
+        sep_by::<(), _, _>(field, token_lex(',')),
+    );
 
     expr
 }
 
-parser!{
+parser! {
     fn throw_object[I]()(I) -> ()
     where [I: Stream<Item = char>]
     {
@@ -94,7 +97,7 @@ where
     ))
 }
 
-parser!{
+parser! {
     pub fn throw_json[I]()(I) -> ()
     where [I: Stream<Item = char>]
     {
@@ -105,9 +108,9 @@ parser!{
 #[cfg(test)]
 mod tests {
     use super::*;
-    use combine::stream::IteratorStream;
-    use combine::stream::state::State;
     use combine::stream::buffered::BufferedStream;
+    use combine::stream::state::State;
+    use combine::stream::IteratorStream;
 
     #[test]
     fn parse_short_complex() {

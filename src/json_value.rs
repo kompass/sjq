@@ -31,7 +31,7 @@ impl std::fmt::Display for JsonValue {
                 }
 
                 write!(f, "}}")
-            },
+            }
             JsonValue::Array(v) => {
                 write!(f, "[")?;
 

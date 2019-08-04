@@ -1,21 +1,21 @@
-use std::cell::RefCell;
 use either::Either;
+use std::cell::RefCell;
 use std::rc::Rc;
 
-use combine::{parser, combine_parser_impl, combine_parse_partial, parse_mode};
 use combine::stream::Stream;
+use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
 
+use combine::parser::choice::choice;
+use combine::parser::combinator::factory;
 use combine::parser::repeat::sep_by;
 use combine::parser::sequence::between;
-use combine::parser::choice::choice;
- use combine::parser::combinator::factory;
 
 use crate::json_path::JsonPath;
 use crate::json_value::JsonValue;
 use crate::parse_and_keep::keep_json;
 use crate::parse_and_throw::throw_json;
-use crate::parse_basics::{token_lex, string_lex};
-use crate::parse_and_throw::{throw_string, throw_number, throw_keyword};
+use crate::parse_and_throw::{throw_keyword, throw_number, throw_string};
+use crate::parse_basics::{string_lex, token_lex};
 use crate::pipeline::Stage;
 
 struct InternalState {
@@ -29,7 +29,7 @@ pub struct ParserState(Rc<InternalState>);
 
 impl ParserState {
     pub fn new(pipeline: Box<dyn Stage>, filter: JsonPath) -> ParserState {
-        ParserState(Rc::new(InternalState{
+        ParserState(Rc::new(InternalState {
             pipeline,
             filter,
             pos: RefCell::new(JsonPath::root()),
@@ -71,7 +71,7 @@ impl Stage for ParserState {
     }
 }
 
-parser!{
+parser! {
     fn array_smart[I](state: ParserState)(I) -> ()
     where [I: Stream<Item = char>]
     {
@@ -87,7 +87,7 @@ parser!{
     }
 }
 
-parser!{
+parser! {
     fn object_smart[I](state: ParserState)(I) -> ()
     where [I: Stream<Item = char>]
     {
@@ -109,7 +109,7 @@ parser!{
     }
 }
 
-parser!{
+parser! {
     fn keep_json_smart[I](state: ParserState)(I) -> ()
     where [I: Stream<Item = char>]
     {
@@ -117,7 +117,7 @@ parser!{
     }
 }
 
-parser!{
+parser! {
     pub fn json_smart[I](state: ParserState)(I) -> ()
     where [I: Stream<Item = char>]
     {

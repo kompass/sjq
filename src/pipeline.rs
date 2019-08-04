@@ -19,17 +19,17 @@ pub struct AddFieldStage<O: Stage> {
     output: O,
 }
 
-impl <O: Stage> AddFieldStage<O> {
+impl<O: Stage> AddFieldStage<O> {
     pub fn new(output: O, key: &str, value: JsonValue) -> AddFieldStage<O> {
-        AddFieldStage{
+        AddFieldStage {
             key: key.to_string(),
             value,
-            output
+            output,
         }
     }
 }
 
-impl <O: Stage> Stage for AddFieldStage<O> {
+impl<O: Stage> Stage for AddFieldStage<O> {
     fn ingest(&self, mut item: JsonValue) -> Result<(), ()> {
         if let JsonValue::Object(ref mut obj) = item {
             obj.insert(self.key.clone(), self.value.clone());
