@@ -52,8 +52,8 @@ impl JsonPath {
 		self.0.is_empty()
 	}
 
-	pub fn push_node(&mut self, node_name: String) {
-		self.0.push(JsonPathStage::Node(node_name));
+	pub fn push_node(&mut self, node_name: &str) {
+		self.0.push(JsonPathStage::Node(node_name.to_string()));
 	}
 
 	pub fn pop_node(&mut self) {
@@ -83,6 +83,10 @@ impl JsonPath {
 	pub fn is_part(&self, other: &JsonPath) -> bool {
 		other.0.starts_with(&self.0)
 	}
+
+	pub fn is(&self, other: &JsonPath) -> bool {
+		self == other
+	}
 }
 
 impl FromStr for JsonPath {
@@ -99,7 +103,7 @@ impl FromStr for JsonPath {
 		assert!(rest.is_empty());
 
 		for node in parse_tree {
-			path.push_node(node.0);
+			path.push_node(&node.0);
 
 			for elem in node.1 {
 				path.push_index(elem);

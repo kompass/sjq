@@ -32,6 +32,7 @@ name = "huge-json"
 version = "0.1.0"
 dependencies = [
  "combine 3.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "either 1.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode_reader 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

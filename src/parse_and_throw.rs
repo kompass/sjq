@@ -10,7 +10,7 @@ use combine::parser::choice::choice;
 use crate::parse_basics::{number_lex, string_lex, keyword_lex, token_lex};
 
 
-fn throw_number<I>() -> impl Parser<Input = I, Output = ()>
+pub fn throw_number<I>() -> impl Parser<Input = I, Output = ()>
 	where
 	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -18,7 +18,7 @@ fn throw_number<I>() -> impl Parser<Input = I, Output = ()>
 	number_lex().map(|_| ())
 }
 
-fn throw_string<I>() -> impl Parser<Input = I, Output = ()>
+pub fn throw_string<I>() -> impl Parser<Input = I, Output = ()>
 where
 	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -26,7 +26,7 @@ where
 	string_lex().map(|_| ())
 }
 
-fn throw_keyword<I>() -> impl Parser<Input = I, Output = ()>
+pub fn throw_keyword<I>() -> impl Parser<Input = I, Output = ()>
 where
 	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -49,7 +49,7 @@ where
 	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	between(token_lex('['), token_lex(']'), sep_by::<Vec<()>, _, _>(throw_json(), token_lex(',')).map(|_| () ))
+	between(token_lex('['), token_lex(']'), sep_by::<(), _, _>(throw_json(), token_lex(',')))
 }
 
 parser!{
@@ -65,9 +65,9 @@ where
 	I: Stream<Item = char>,
 	I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	let field = string_lex().skip(token_lex(':')).and(throw_json()).map(|_| () );
+	let field = string_lex().skip(token_lex(':')).with(throw_json());
 
-	let expr = between(token_lex('{'), token_lex('}'), sep_by::<Vec<()>, _, _>(field, token_lex(',')).map(|_| () ));
+	let expr = between(token_lex('{'), token_lex('}'), sep_by::<(), _, _>(field, token_lex(',')));
 
 	expr
 }
