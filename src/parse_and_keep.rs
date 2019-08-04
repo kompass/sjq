@@ -15,45 +15,45 @@ use crate::parse_basics::{number_lex, string_lex, keyword_lex, token_lex};
 
 
 fn keep_number<I>() -> impl Parser<Input = I, Output = JsonValue>
-	where
-	I: Stream<Item = char>,
-	I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	number_lex().map(|n: u64| JsonValue::Number(n))
+    number_lex().map(|n: u64| JsonValue::Number(n))
 }
 
 fn keep_string<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
-	I: Stream<Item = char>,
-	I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	string_lex().map(|s: String| JsonValue::String(s))
+    string_lex().map(|s: String| JsonValue::String(s))
 }
 
 fn keep_keyword<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
-	I: Stream<Item = char>,
-	I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	let null_val = keyword_lex("null").map(|_| JsonValue::Null );
+    let null_val = keyword_lex("null").map(|_| JsonValue::Null );
 
-	let true_val = keyword_lex("true").map(|_| JsonValue::Boolean(true) );
+    let true_val = keyword_lex("true").map(|_| JsonValue::Boolean(true) );
 
-	let false_val = keyword_lex("false").map(|_| JsonValue::Boolean(false) );
+    let false_val = keyword_lex("false").map(|_| JsonValue::Boolean(false) );
 
-	choice((
-		null_val,
-		true_val,
-		false_val,
-	))
+    choice((
+        null_val,
+        true_val,
+        false_val,
+    ))
 }
 
 fn keep_array_<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
-	I: Stream<Item = char>,
-	I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	between(token_lex('['), token_lex(']'), sep_by::<Vec<JsonValue>, _, _>(keep_json(), token_lex(','))).map(|v| JsonValue::Array(v))
+    between(token_lex('['), token_lex(']'), sep_by::<Vec<JsonValue>, _, _>(keep_json(), token_lex(','))).map(|v| JsonValue::Array(v))
 }
 
 parser!{
@@ -66,15 +66,15 @@ parser!{
 
 fn keep_object_<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
-	I: Stream<Item = char>,
-	I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	let field = string_lex().skip(token_lex(':')).and(keep_json());
+    let field = string_lex().skip(token_lex(':')).and(keep_json());
 
-	let expr = between(token_lex('{'), token_lex('}'), sep_by::<Vec<(String, JsonValue)>, _, _>(field, token_lex(',')));
-	let value = expr.map(|v| JsonValue::Object(HashMap::from_iter(v)));
+    let expr = between(token_lex('{'), token_lex('}'), sep_by::<Vec<(String, JsonValue)>, _, _>(field, token_lex(',')));
+    let value = expr.map(|v| JsonValue::Object(HashMap::from_iter(v)));
 
-	value
+    value
 }
 
 parser!{
@@ -87,16 +87,16 @@ parser!{
 
 fn keep_json_<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
-	I: Stream<Item = char>,
-	I::Error: ParseError<I::Item, I::Range, I::Position>,
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-	choice((
-		keep_string(),
-		keep_number(),
-		keep_keyword(),
-		keep_array(),
-		keep_object(),
-	))
+    choice((
+        keep_string(),
+        keep_number(),
+        keep_keyword(),
+        keep_array(),
+        keep_object(),
+    ))
 }
 
 parser!{
@@ -109,24 +109,24 @@ parser!{
 
 #[cfg(test)]
 mod tests {
-	use super::*;
-	use combine::stream::IteratorStream;
-	use combine::stream::state::State;
-	use combine::stream::buffered::BufferedStream;
+    use super::*;
+    use combine::stream::IteratorStream;
+    use combine::stream::state::State;
+    use combine::stream::buffered::BufferedStream;
 
-	#[test]
-	fn parse_short_complex() {
-		let expr = r#"{"pomme" : { "taille" :          12345,   "couleur": "jaune" },
-		"random_array": [1, 2, 3    , "word" ]}"#;
-		let expected = JsonValue::Object([
-        	("pomme".to_string(), JsonValue::Object([
-               	("taille".to_string(), JsonValue::Number(12345)),
-               	("couleur".to_string(), JsonValue::String("jaune".to_string()))
-        	].iter().cloned().collect())),
-        	("random_array".to_string(), JsonValue::Array(vec![JsonValue::Number(1), JsonValue::Number(2), JsonValue::Number(3), JsonValue::String("word".to_string())])),
-    	].iter().cloned().collect());
+    #[test]
+    fn parse_short_complex() {
+        let expr = r#"{"pomme" : { "taille" :          12345,   "couleur": "jaune" },
+        "random_array": [1, 2, 3    , "word" ]}"#;
+        let expected = JsonValue::Object([
+            ("pomme".to_string(), JsonValue::Object([
+                ("taille".to_string(), JsonValue::Number(12345)),
+                ("couleur".to_string(), JsonValue::String("jaune".to_string()))
+            ].iter().cloned().collect())),
+            ("random_array".to_string(), JsonValue::Array(vec![JsonValue::Number(1), JsonValue::Number(2), JsonValue::Number(3), JsonValue::String("word".to_string())])),
+        ].iter().cloned().collect());
 
-		let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1);
+        let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1);
         assert_eq!(keep_json().parse(stream).unwrap().0, expected);
-	}
+    }
 }

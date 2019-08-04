@@ -23,14 +23,14 @@ use crate::unicode_stream::iter_from_read;
 use crate::pipeline::{Stage, StdoutStage, AddFieldStage};
 
 fn main() {
-	let buffered_stdin = BufReader::new(stdin());
-	let char_iter = iter_from_read(buffered_stdin);
-	let stream = BufferedStream::new(State::new(IteratorStream::new(char_iter)), 1);
+    let buffered_stdin = BufReader::new(stdin());
+    let char_iter = iter_from_read(buffered_stdin);
+    let stream = BufferedStream::new(State::new(IteratorStream::new(char_iter)), 1);
 
-	let pipeline: Box<dyn Stage> = Box::new(AddFieldStage::new(StdoutStage(), "pipeline_status", JsonValue::String("running".to_string())));
+    let pipeline: Box<dyn Stage> = Box::new(AddFieldStage::new(StdoutStage(), "pipeline_status", JsonValue::String("running".to_string())));
 
-	let filter = JsonPath::from_str(".abc").unwrap();
-	let state = ParserState::new(pipeline, filter);
+    let filter = JsonPath::from_str(".abc").unwrap();
+    let state = ParserState::new(pipeline, filter);
 
-	json_smart(state).easy_parse(stream).unwrap();
+    json_smart(state).easy_parse(stream).unwrap();
 }
