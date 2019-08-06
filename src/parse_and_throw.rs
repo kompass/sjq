@@ -30,11 +30,11 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let null_val = keyword_lex("null").map(|_| ());
+    let null_val = keyword_lex("null");
 
-    let true_val = keyword_lex("true").map(|_| ());
+    let true_val = keyword_lex("true");
 
-    let false_val = keyword_lex("false").map(|_| ());
+    let false_val = keyword_lex("false");
 
     choice((null_val, true_val, false_val))
 }

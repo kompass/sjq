@@ -11,6 +11,8 @@ use std::io::stdin;
 use std::io::BufReader;
 use std::str::FromStr;
 
+use structopt::StructOpt;
+
 use combine::parser::Parser;
 use combine::stream::buffered::BufferedStream;
 use combine::stream::state::State;
@@ -20,12 +22,24 @@ use crate::json_path::JsonPath;
 use crate::json_value::JsonValue;
 use crate::parse_smart::{json_smart, ParserState};
 use crate::pipeline::{AddFieldStage, Stage, StdoutStage};
-use crate::unicode_stream::iter_from_read;
+use crate::unicode_stream::ReadStream;
+
+#[derive(StructOpt, Debug)]
+struct Opt {
+    #[structopt(short, long)]
+    output: Option<String>,
+
+    #[structopt(short, long)]
+    pretty: bool,
+
+    query: String,
+}
 
 fn main() {
-    let buffered_stdin = BufReader::new(stdin());
-    let char_iter = iter_from_read(buffered_stdin);
-    let stream = BufferedStream::new(State::new(IteratorStream::new(char_iter)), 1);
+    let _ = include_str!("../Cargo.toml"); //Trigger the rebuild automatism when Cargo.toml is changed
+    let args = Opt::from_args();
+
+    let stream = ReadStream::from_read_buffered(stdin());
 
     let pipeline: Box<dyn Stage> = Box::new(AddFieldStage::new(
         StdoutStage(),
@@ -33,7 +47,7 @@ fn main() {
         JsonValue::String("running".to_string()),
     ));
 
-    let filter = JsonPath::from_str(".abc").unwrap();
+    let filter = JsonPath::from_str(&args.query).unwrap();
     let state = ParserState::new(pipeline, filter);
 
     json_smart(state).easy_parse(stream).unwrap();

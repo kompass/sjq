@@ -1,8 +1,9 @@
 use combine::error::ParseError;
 use combine::stream::{Stream, StreamOnce};
 
+use combine::parser::char::string;
 use combine::parser::char::{alpha_num, digit, letter, spaces};
-use combine::parser::item::{any, none_of, token, tokens};
+use combine::parser::item::{any, none_of, token};
 use combine::parser::repeat::{many, many1};
 use combine::parser::sequence::between;
 use combine::parser::Parser;
@@ -25,7 +26,9 @@ where
     let expr = between(
         token('"'),
         token('"'),
-        many::<String, _>((token('\\').and(any()).map(|x| x.1)).or(none_of(['"'].iter().cloned()))),
+        many::<String, _>(
+            (token('\\').and(any()).map(|x| x.1)).or(none_of(Some('"').iter().cloned())),
+        ),
     ); // TODO: Check special escaped characters
 
     expr
@@ -38,10 +41,9 @@ where
 {
     let expr = letter()
         .and(many::<String, _>(alpha_num()))
-        .map(|(first, rest)| {
-            let mut val = rest.clone();
-            val.insert(0, first);
-            val
+        .map(move |(first, mut rest)| {
+            rest.insert(0, first);
+            rest
         });
 
     expr
@@ -52,7 +54,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    tokens(|l, r| l == r, keyword.into(), keyword.chars()).map(|_| ())
+    string(keyword).map(|_| ())
 }
 
 fn lex<P>(p: P) -> impl Parser<Input = P::Input, Output = P::Output>

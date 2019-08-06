@@ -1,5 +1,6 @@
 [package]
 name = "huge-json"
+description = "OMAGAD such a JSON parser ! So fast !"
 version = "0.1.0"
 authors = ["Nicolas Kirchner <kirchner.nic@gmail.com>"]
 edition = "2018"
@@ -8,5 +9,6 @@ readme = "README.md"
 
 [dependencies]
 combine = "3.8"
-unicode_reader = "1.0"
 either = "1.5"
+structopt = "0.2"
+unicode_reader = "1.0"
