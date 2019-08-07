@@ -25,15 +25,13 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let expr = between(
+    between(
         token('"'),
         token('"'),
         many::<String, _>(
             (token('\\').and(any()).map(|x| x.1)).or(none_of(Some('"').iter().cloned())),
         ),
-    ); // TODO: Check special escaped characters
-
-    expr
+    ) // TODO: Check special escaped characters
 }
 
 pub fn regex_expr<I>() -> impl Parser<Input = I, Output = Regex>
@@ -57,14 +55,12 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let expr = letter()
+    letter()
         .and(many::<String, _>(alpha_num()))
         .map(move |(first, mut rest)| {
             rest.insert(0, first);
             rest
-        });
-
-    expr
+        })
 }
 
 pub fn keyword_expr<I>(keyword: &'static str) -> impl Parser<Input = I, Output = ()>

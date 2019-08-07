@@ -6,15 +6,15 @@ pub enum JsonPathStage {
 
 impl JsonPathStage {
     fn is_node(&self) -> bool {
-        match self {
-            &JsonPathStage::Node(_) => true,
+        match *self {
+            JsonPathStage::Node(_) => true,
             _ => false,
         }
     }
 
     fn is_index(&self) -> bool {
-        match self {
-            &JsonPathStage::Index(_) => true,
+        match *self {
+            JsonPathStage::Index(_) => true,
             _ => false,
         }
     }

@@ -66,13 +66,11 @@ where
 {
     let field = string_lex().skip(token_lex(':')).with(throw_json());
 
-    let expr = between(
+    between(
         token_lex('{'),
         token_lex('}'),
         sep_by::<(), _, _>(field, token_lex(',')),
-    );
-
-    expr
+    )
 }
 
 parser! {

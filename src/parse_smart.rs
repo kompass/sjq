@@ -101,12 +101,11 @@ parser! {
             json_smart(state.clone())
         }).map(move |_| state_clone2.exit_node());
 
-        let expr = between(
+        between(
             token_lex('{'),
             token_lex('}'),
-            sep_by::<(), _, _>(field, token_lex(',')));
-
-        expr
+            sep_by::<(), _, _>(field, token_lex(','))
+        )
     }
 }
 

@@ -83,16 +83,14 @@ impl Filter {
         match self {
             Filter::All => true,
             Filter::Parts(ref parts) => {
-                if subpath == false {
-                    if pos.len() < parts.len() {
-                        return false;
-                    }
+                if !subpath && pos.len() < parts.len() {
+                    return false;
                 }
 
                 let zipped = parts.iter().zip(pos.iter());
 
                 for (filter_part, path_stage) in zipped {
-                    if filter_part.is_match(path_stage) == false {
+                    if !filter_part.is_match(path_stage) {
                         return false;
                     }
                 }
@@ -166,15 +164,13 @@ impl Filter {
                 }
             });
 
-        let union_expr = sep_by1::<Vec<_>, _, _>(filter_expr, token_lex(',')).map(|mut v| {
+        sep_by1::<Vec<_>, _, _>(filter_expr, token_lex(',')).map(|mut v| {
             if v.len() == 1 {
                 v.pop().unwrap()
             } else {
                 Filter::Union(v)
             }
-        });
-
-        union_expr
+        })
     }
 }
 

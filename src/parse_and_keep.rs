@@ -76,9 +76,8 @@ where
         token_lex('}'),
         sep_by::<Vec<(String, JsonValue)>, _, _>(field, token_lex(',')),
     );
-    let value = expr.map(|v| JsonValue::Object(HashMap::from_iter(v)));
 
-    value
+    expr.map(|v| JsonValue::Object(HashMap::from_iter(v)))
 }
 
 parser! {
