@@ -14,7 +14,7 @@ use combine::parser::repeat::{many, sep_by1};
 use combine::parser::sequence::between;
 
 use crate::json_path::{JsonPath, JsonPathStage};
-use crate::parse_basics::{ident_expr, number_expr, string_expr, token_lex};
+use crate::parse_basics::{ident_expr, number_expr, string_expr, token_lex, regex_expr};
 
 pub enum BranchFilter {
     TextMatch(String),
@@ -150,8 +150,9 @@ impl Filter {
             .map(|array_filter| FilterPart::Array(array_filter));
 
         let branch_filter_expr = token('.')
-            .with(string_expr().or(ident_expr()))
-            .map(|branch_name| FilterPart::Branch(BranchFilter::TextMatch(branch_name)));
+            .with(string_expr().or(ident_expr())
+            	.map(|branch_name| FilterPart::Branch(BranchFilter::TextMatch(branch_name)))
+            	.or(regex_expr().map(|reg| FilterPart::Branch(BranchFilter::RegexMatch(reg)))));
 
         let filter_part_expr = array_filter_expr.or(branch_filter_expr);
 

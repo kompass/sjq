@@ -1,3 +1,5 @@
+use regex::Regex;
+
 use combine::error::ParseError;
 use combine::stream::{Stream, StreamOnce};
 
@@ -32,6 +34,22 @@ where
     ); // TODO: Check special escaped characters
 
     expr
+}
+
+pub fn regex_expr<I>() -> impl Parser<Input = I, Output = Regex>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    let expr = between(
+        token('/'),
+        token('/'),
+        many::<String, _>(
+            (token('\\').and(token('/')).map(|x| x.1)).or(none_of(Some('/').iter().cloned())),
+        ),
+    );
+
+    expr.map(|s| Regex::new(&s).unwrap())
 }
 
 pub fn ident_expr<I>() -> impl Parser<Input = I, Output = String>
