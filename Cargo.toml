@@ -1,5 +1,5 @@
 [package]
-name = "huge-json"
+name = "sjq"
 description = "OMAGAD such a JSON parser ! So fast !"
 version = "0.1.0"
 authors = ["Nicolas Kirchner <kirchner.nic@gmail.com>"]
