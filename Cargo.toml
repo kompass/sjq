@@ -10,5 +10,6 @@ readme = "README.md"
 [dependencies]
 combine = "3.8"
 either = "1.5"
+regex = "1.2"
 structopt = "0.2"
 unicode_reader = "1.0"

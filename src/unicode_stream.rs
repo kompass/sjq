@@ -5,7 +5,7 @@ use unicode_reader::CodePoints;
 use combine::error::UnexpectedParse;
 use combine::stream::buffered::BufferedStream;
 use combine::stream::state::{SourcePosition, State};
-use combine::stream::{IteratorStream, Positioned, Resetable, Stream, StreamErrorFor, StreamOnce};
+use combine::stream::{IteratorStream, Positioned, Resetable, StreamErrorFor, StreamOnce};
 
 pub struct ReadIterator<R: Read>(Option<CodePoints<Bytes<R>>>);
 

@@ -10,17 +10,18 @@ use combine::parser::combinator::factory;
 use combine::parser::repeat::sep_by;
 use combine::parser::sequence::between;
 
+use crate::filter::Filter;
 use crate::json_path::JsonPath;
 use crate::json_value::JsonValue;
 use crate::parse_and_keep::keep_json;
 use crate::parse_and_throw::throw_json;
 use crate::parse_and_throw::{throw_keyword, throw_number, throw_string};
 use crate::parse_basics::{string_lex, token_lex};
-use crate::pipeline::Stage;
+use crate::pipeline::Pipeline;
 
 struct InternalState {
-    pipeline: Box<dyn Stage>,
-    filter: JsonPath,
+    pipeline: Box<dyn Pipeline>,
+    filter: Filter,
     pos: RefCell<JsonPath>,
 }
 
@@ -28,7 +29,7 @@ struct InternalState {
 pub struct ParserState(Rc<InternalState>);
 
 impl ParserState {
-    pub fn new(pipeline: Box<dyn Stage>, filter: JsonPath) -> ParserState {
+    pub fn new(pipeline: Box<dyn Pipeline>, filter: Filter) -> ParserState {
         ParserState(Rc::new(InternalState {
             pipeline,
             filter,
@@ -57,15 +58,15 @@ impl ParserState {
     }
 
     fn is_keeped(&self) -> bool {
-        self.0.pos.borrow().is(&self.0.filter)
+        self.0.filter.is_match(&self.0.pos.borrow())
     }
 
     fn is_containing_keeped(&self) -> bool {
-        self.0.pos.borrow().is_part(&self.0.filter)
+        self.0.filter.is_subpath(&self.0.pos.borrow())
     }
 }
 
-impl Stage for ParserState {
+impl Pipeline for ParserState {
     fn ingest(&self, item: JsonValue) -> Result<(), ()> {
         self.0.pipeline.ingest(item)
     }

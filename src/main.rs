@@ -1,3 +1,5 @@
+mod args_parser;
+mod filter;
 mod json_path;
 mod json_value;
 mod parse_and_keep;
@@ -8,47 +10,34 @@ mod pipeline;
 mod unicode_stream;
 
 use std::io::stdin;
-use std::io::BufReader;
-use std::str::FromStr;
-
-use structopt::StructOpt;
 
 use combine::parser::Parser;
-use combine::stream::buffered::BufferedStream;
-use combine::stream::state::State;
-use combine::stream::IteratorStream;
+use structopt::StructOpt;
 
-use crate::json_path::JsonPath;
 use crate::json_value::JsonValue;
 use crate::parse_smart::{json_smart, ParserState};
-use crate::pipeline::{AddFieldStage, Stage, StdoutStage};
+use crate::pipeline::{AddFieldStage, Pipeline, PipelineBuilder, StdoutStage};
 use crate::unicode_stream::ReadStream;
 
-#[derive(StructOpt, Debug)]
-struct Opt {
-    #[structopt(short, long)]
-    output: Option<String>,
-
-    #[structopt(short, long)]
-    pretty: bool,
-
-    query: String,
-}
+use crate::args_parser::ArgStruct;
 
 fn main() {
     let _ = include_str!("../Cargo.toml"); //Trigger the rebuild automatism when Cargo.toml is changed
-    let args = Opt::from_args();
+    let args = ArgStruct::from_args();
 
     let stream = ReadStream::from_read_buffered(stdin());
 
-    let pipeline: Box<dyn Stage> = Box::new(AddFieldStage::new(
+    let pipeline: Box<dyn Pipeline> = Box::new(AddFieldStage::new(
         StdoutStage(),
         "pipeline_status",
         JsonValue::String("running".to_string()),
     ));
 
-    let filter = JsonPath::from_str(&args.query).unwrap();
+    let pipeline_builder = PipelineBuilder::from(&args);
+
+    let filter = pipeline_builder.build_filter().unwrap();
     let state = ParserState::new(pipeline, filter);
 
+    // TODO: Parse stream of objects (using many::<(), _> or else)
     json_smart(state).easy_parse(stream).unwrap();
 }

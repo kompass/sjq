@@ -86,14 +86,6 @@ where
     lex(string_expr())
 }
 
-pub fn ident_lex<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    lex(ident_expr())
-}
-
 pub fn keyword_lex<I>(keyword: &'static str) -> impl Parser<Input = I, Output = ()>
 where
     I: Stream<Item = char>,
