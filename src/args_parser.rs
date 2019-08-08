@@ -6,6 +6,9 @@ pub struct ArgStruct {
     pub output: Option<String>,
 
     #[structopt(short, long)]
+    pub append: bool,
+
+    #[structopt(short, long)]
     pub pretty: bool,
 
     pub query: String,

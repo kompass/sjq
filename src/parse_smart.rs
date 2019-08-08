@@ -20,7 +20,7 @@ use crate::parse_basics::{string_lex, token_lex};
 use crate::pipeline::Pipeline;
 
 struct InternalState {
-    pipeline: Box<dyn Pipeline>,
+    pipeline: RefCell<Box<dyn Pipeline>>,
     filter: Filter,
     pos: RefCell<JsonPath>,
 }
@@ -31,7 +31,7 @@ pub struct ParserState(Rc<InternalState>);
 impl ParserState {
     pub fn new(pipeline: Box<dyn Pipeline>, filter: Filter) -> ParserState {
         ParserState(Rc::new(InternalState {
-            pipeline,
+            pipeline: RefCell::new(pipeline),
             filter,
             pos: RefCell::new(JsonPath::root()),
         }))
@@ -64,11 +64,9 @@ impl ParserState {
     fn is_containing_keeped(&self) -> bool {
         self.0.filter.is_subpath(&self.0.pos.borrow())
     }
-}
 
-impl Pipeline for ParserState {
     fn ingest(&self, item: JsonValue) -> Result<(), ()> {
-        self.0.pipeline.ingest(item)
+        self.0.pipeline.borrow_mut().ingest(item)
     }
 }
 
