@@ -56,7 +56,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     letter()
-        .and(many::<String, _>(alpha_num()))
+        .and(many::<String, _>(alpha_num().or(token('_'))))
         .map(move |(first, mut rest)| {
             rest.insert(0, first);
             rest

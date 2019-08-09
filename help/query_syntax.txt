@@ -1,0 +1,9 @@
+EXAMPLES :
+
+	sjq "." : Ouptut everything (useful with --pretty option to prettify the input)
+
+	sjq ".field_name" : For each object in the object stream input (maybe just one), output the content of the field "field_name"
+
+	sjq '."field_name with space"' : Same as previous, but for a field containing spaces or other special characters
+
+	sjq "./field_(name|value)(_\d+)?/" : Same as previous, but using regex. Here this query matches the fields "field_name", "field_value", "field_name_192", ...

@@ -72,7 +72,8 @@ impl<'a> PipelineBuilder<'a> {
         let output_stage: Box<dyn Pipeline> = if let Some(ref filename) = self.0.output {
             let output_writer = OpenOptions::new()
                 .write(true)
-                .create(true)
+                .append(self.0.append)
+                .create_new(self.0.force_new)
                 .open(filename)
                 .unwrap();
 
