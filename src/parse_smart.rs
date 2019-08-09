@@ -38,11 +38,11 @@ impl ParserState {
     }
 
     fn enter_node(&self, name: &str) {
-        self.0.pos.borrow_mut().push_node(name);
+        self.0.pos.borrow_mut().push_field(name);
     }
 
     fn exit_node(&self) {
-        self.0.pos.borrow_mut().pop_node();
+        self.0.pos.borrow_mut().pop_field();
     }
 
     fn enter_array(&self) {

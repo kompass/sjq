@@ -13,7 +13,7 @@ use combine::parser::item::token;
 use combine::parser::repeat::{many, sep_by1};
 use combine::parser::sequence::between;
 
-use crate::json_path::{JsonPath, JsonPathStage};
+use crate::json_path::{JsonPath, JsonPathStep};
 use crate::parse_basics::{ident_expr, number_expr, regex_expr, string_expr, token_lex};
 
 pub enum BranchFilter {
@@ -52,17 +52,17 @@ pub enum FilterPart {
 }
 
 impl FilterPart {
-    fn is_match(&self, pos_part: &JsonPathStage) -> bool {
+    fn is_match(&self, pos_part: &JsonPathStep) -> bool {
         match self {
             FilterPart::Branch(ref branch_filter) => {
-                if let JsonPathStage::Node(ref branch_name) = pos_part {
+                if let JsonPathStep::Field(ref branch_name) = pos_part {
                     branch_filter.is_match(branch_name)
                 } else {
                     false
                 }
             }
             FilterPart::Array(ref array_filter) => {
-                if let JsonPathStage::Index(array_index) = pos_part {
+                if let JsonPathStep::Index(array_index) = pos_part {
                     array_filter.is_match(*array_index)
                 } else {
                     false
@@ -89,8 +89,8 @@ impl Filter {
 
                 let zipped = parts.iter().zip(pos.iter());
 
-                for (filter_part, path_stage) in zipped {
-                    if !filter_part.is_match(path_stage) {
+                for (filter_part, path_step) in zipped {
+                    if !filter_part.is_match(path_step) {
                         return false;
                     }
                 }
