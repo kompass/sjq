@@ -14,7 +14,7 @@ FLAGS:
     -a, --append       If output filename specified, appends instead of overwriting previous content
     -f, --force-new    Fails if output file already exists
     -h, --help         Prints help information
-    -p, --pretty       Prettify json ouput
+    -p, --pretty       Prettify json output
     -V, --version      Prints version information
 
 OPTIONS:
