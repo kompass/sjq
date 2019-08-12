@@ -4,11 +4,11 @@ use std::iter::FromIterator;
 use combine::error::ParseError;
 use combine::stream::Stream;
 use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
+use combine::parser::Parser;
 
 use combine::parser::choice::choice;
 use combine::parser::repeat::sep_by;
 use combine::parser::sequence::between;
-use combine::parser::Parser;
 
 use crate::json_value::JsonValue;
 use crate::parse_basics::{NumberVal, keyword_lex, number_lex, string_lex, token_lex};
@@ -21,12 +21,12 @@ where
     number_lex().map(|n: NumberVal| n.into())
 }
 
-fn keep_string<I>() -> impl Parser<Input = I, Output = JsonValue>
+fn keep_string<I>(max_length: usize) -> impl Parser<Input = I, Output = JsonValue>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    string_lex().map(|s: String| JsonValue::String(s))
+    string_lex(max_length).map(|s: String| JsonValue::String(s))
 }
 
 fn keep_keyword<I>() -> impl Parser<Input = I, Output = JsonValue>
@@ -43,7 +43,7 @@ where
     choice((null_val, true_val, false_val))
 }
 
-fn keep_array_<I>() -> impl Parser<Input = I, Output = JsonValue>
+fn keep_array_<I>(max_text_length: usize) -> impl Parser<Input = I, Output = JsonValue>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -51,25 +51,25 @@ where
     between(
         token_lex('['),
         token_lex(']'),
-        sep_by::<Vec<JsonValue>, _, _>(keep_json(), token_lex(',')),
+        sep_by::<Vec<JsonValue>, _, _>(keep_json(max_text_length), token_lex(',')),
     )
     .map(|v| JsonValue::Array(v))
 }
 
 parser! {
-    fn keep_array[I]()(I) -> JsonValue
+    fn keep_array[I](max_text_length: usize)(I) -> JsonValue
     where [I: Stream<Item = char>]
     {
-        keep_array_()
+        keep_array_(*max_text_length)
     }
 }
 
-fn keep_object_<I>() -> impl Parser<Input = I, Output = JsonValue>
+fn keep_object_<I>(max_text_length: usize) -> impl Parser<Input = I, Output = JsonValue>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let field = string_lex().skip(token_lex(':')).and(keep_json());
+    let field = string_lex(max_text_length).skip(token_lex(':')).and(keep_json(max_text_length));
 
     let expr = between(
         token_lex('{'),
@@ -81,32 +81,32 @@ where
 }
 
 parser! {
-    fn keep_object[I]()(I) -> JsonValue
+    fn keep_object[I](max_text_length: usize)(I) -> JsonValue
     where [I: Stream<Item = char>]
     {
-        keep_object_()
+        keep_object_(*max_text_length)
     }
 }
 
-fn keep_json_<I>() -> impl Parser<Input = I, Output = JsonValue>
+fn keep_json_<I>(max_text_length: usize) -> impl Parser<Input = I, Output = JsonValue>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        keep_string(),
+        keep_string(max_text_length),
         keep_number(),
         keep_keyword(),
-        keep_array(),
-        keep_object(),
+        keep_array(max_text_length),
+        keep_object(max_text_length),
     ))
 }
 
 parser! {
-    pub fn keep_json[I]()(I) -> JsonValue
+    pub fn keep_json[I](max_text_length: usize)(I) -> JsonValue
     where [I: Stream<Item = char>]
     {
-        keep_json_()
+        keep_json_(*max_text_length)
     }
 }
 
@@ -154,6 +154,6 @@ mod tests {
         );
 
         let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1000);
-        assert_eq!(keep_json().parse(stream).unwrap().0, expected);
+        assert_eq!(keep_json(1000).parse(stream).unwrap().0, expected);
     }
 }

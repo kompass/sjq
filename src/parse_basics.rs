@@ -1,5 +1,6 @@
 use regex::Regex;
 use lexical;
+use once_cell::sync::Lazy;
 
 use combine::error::ParseError;
 use combine::stream::{Stream, StreamOnce};
@@ -9,20 +10,36 @@ use combine::parser::choice::optional;
 use combine::parser::item::one_of;
 use combine::parser::combinator::recognize;
 use combine::parser::item::{any, none_of, token};
-use combine::parser::repeat::{many, many1, skip_many1};
+use combine::parser::repeat::{count, count_min_max, skip_count_min_max};
 use combine::parser::sequence::between;
 use combine::parser::Parser;
 
 use crate::json_value::JsonValue;
+
+macro_rules! number_length_base_10 {
+    ($n:expr) => (
+        ($n as f32).log10().ceil() as usize
+    )
+}
+
+// TODO : when these arithmetics will be const-compatible, use consts instead of once_cell::Lazy
+
+// The four next consts are not the real max lengths of a valid number.
+// They are there to make sure that the buffer is of sufficient size in each of the worst cases, but a valid number can't be as big.
+// The converter will check itself if the numbers are not too big.
+static INTEGER_PART_MAX_LENGTH : Lazy<usize> = Lazy::new(|| std::cmp::max(std::f64::MAX_10_EXP as usize, number_length_base_10!(std::i64::MAX)));
+static FRACTIONAL_PART_MAX_LENGTH : Lazy<usize> = Lazy::new(|| std::f64::DIGITS as usize);
+static EXPONENT_MAX_LENGTH : Lazy<usize> = Lazy::new(|| number_length_base_10!(std::f64::MAX_10_EXP));
+pub static NUMBER_MAX_LENGTH : Lazy<usize> = Lazy::new(|| *&*INTEGER_PART_MAX_LENGTH + *&*FRACTIONAL_PART_MAX_LENGTH + *&*EXPONENT_MAX_LENGTH + 2);
 
 pub fn index_expr<I>() -> impl Parser<Input = I, Output = u64>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let expr = many1::<String, _>(digit());
+    let expr = count_min_max::<String, _>(1, *&*INTEGER_PART_MAX_LENGTH, digit());
 
-    expr.map(|s: String| s.parse::<u64>().unwrap())
+    expr.map(|s: String| lexical::try_parse(&s).unwrap())
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -47,12 +64,15 @@ where
 {
     let expr = recognize::<String, _>((
         optional(one_of("-+".chars())),
-        skip_many1(digit()),
-        optional((token('.'), skip_many1(digit()))),
+        skip_count_min_max(1, *&*INTEGER_PART_MAX_LENGTH, digit()),
+        optional((
+            token('.'),
+            skip_count_min_max(1, *&*FRACTIONAL_PART_MAX_LENGTH, digit())
+        )),
         optional((
             one_of("eE".chars()),
             optional(one_of("-+".chars())),
-            skip_many1(digit())
+            skip_count_min_max(1, *&*EXPONENT_MAX_LENGTH, digit())
         )),
     ));
 
@@ -67,7 +87,7 @@ where
     })
 }
 
-pub fn string_expr<I>() -> impl Parser<Input = I, Output = String>
+pub fn string_expr<I>(max_length: usize) -> impl Parser<Input = I, Output = String>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -75,13 +95,14 @@ where
     between(
         token('"'),
         token('"'),
-        many::<String, _>(
+        count::<String, _>(
+            max_length,
             (token('\\').and(any()).map(|x| x.1)).or(none_of(Some('"').iter().cloned())),
         ),
     ) // TODO: Check special escaped characters
 }
 
-pub fn regex_expr<I>() -> impl Parser<Input = I, Output = Regex>
+pub fn regex_expr<I>(max_length: usize) -> impl Parser<Input = I, Output = Regex>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -89,7 +110,8 @@ where
     let expr = between(
         token('/'),
         token('/'),
-        many::<String, _>(
+        count::<String, _>(
+            max_length,
             (token('\\').and(token('/')).map(|x| x.1)).or(none_of(Some('/').iter().cloned())),
         ),
     );
@@ -97,13 +119,17 @@ where
     expr.map(|s| Regex::new(&s).unwrap())
 }
 
-pub fn ident_expr<I>() -> impl Parser<Input = I, Output = String>
+pub fn ident_expr<I>(max_length: usize) -> impl Parser<Input = I, Output = String>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     letter()
-        .and(many::<String, _>(alpha_num().or(token('_'))))
+        .and(count_min_max::<String, _>(
+            1,
+            max_length,
+            alpha_num().or(token('_')),
+        ))
         .map(move |(first, mut rest)| {
             rest.insert(0, first);
             rest
@@ -139,12 +165,12 @@ where
     lex(number_expr())
 }
 
-pub fn string_lex<I>() -> impl Parser<Input = I, Output = String>
+pub fn string_lex<I>(max_length: usize) -> impl Parser<Input = I, Output = String>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    lex(string_expr())
+    lex(string_expr(max_length))
 }
 
 pub fn keyword_lex<I>(keyword: &'static str) -> impl Parser<Input = I, Output = ()>
@@ -173,7 +199,7 @@ mod tests {
     macro_rules! assert_parse_exprs {
         ($parser:expr, $exprs_and_expected:expr) => {
             for (expr, expected) in $exprs_and_expected {
-                let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 100);
+                let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1000);
 
                 assert_eq!($parser.parse(stream).unwrap().0, expected);
             }
@@ -189,7 +215,7 @@ mod tests {
             .map(|e| (format!("\"{}\"", e), String::from(e)))
             .collect();
 
-        assert_parse_exprs!(string_expr(), exprs_and_expected);
+        assert_parse_exprs!(string_expr(1000), exprs_and_expected);
     }
 
     #[test]
@@ -226,6 +252,6 @@ mod tests {
             .map(|e| (e.to_string(), e.to_string()))
             .collect();
 
-        assert_parse_exprs!(ident_expr(), exprs_and_expected);
+        assert_parse_exprs!(ident_expr(100), exprs_and_expected);
     }
 }

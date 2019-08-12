@@ -71,7 +71,7 @@ impl ParserState {
 }
 
 parser! {
-    fn array_smart[I](state: ParserState)(I) -> ()
+    fn array_smart[I](state: ParserState, max_text_length: usize)(I) -> ()
     where [I: Stream<Item = char>]
     {
         let state_clone1 = state.clone();
@@ -81,22 +81,22 @@ parser! {
         between(
             token_lex('[').map(move |_| { state_clone1.enter_array(); }),
             token_lex(']').map(move |_| { state_clone2.exit_array(); }),
-            sep_by::<(), _, _>(json_smart(state.clone()), token_lex(',').map(move |_| { state_clone3.next_elem(); }))
+            sep_by::<(), _, _>(json_smart(state.clone(), *max_text_length), token_lex(',').map(move |_| { state_clone3.next_elem(); }))
         )
     }
 }
 
 parser! {
-    fn object_smart[I](state: ParserState)(I) -> ()
+    fn object_smart[I](state: ParserState, max_text_length: usize)(I) -> ()
     where [I: Stream<Item = char>]
     {
         let state_clone1 = state.clone();
         let state_clone2 = state.clone();
 
-        let field = string_lex().skip(token_lex(':')).then(move |field_name| {
+        let field = string_lex(*max_text_length).skip(token_lex(':')).then(move |field_name| {
             state_clone1.enter_node(&field_name);
 
-            json_smart(state.clone())
+            json_smart(state.clone(), *max_text_length)
         }).map(move |_| state_clone2.exit_node());
 
         between(
@@ -108,30 +108,30 @@ parser! {
 }
 
 parser! {
-    fn keep_json_smart[I](state: ParserState)(I) -> ()
+    fn keep_json_smart[I](state: ParserState, max_text_length: usize)(I) -> ()
     where [I: Stream<Item = char>]
     {
-        keep_json().map(move |v| { state.ingest(v).unwrap(); })
+        keep_json(*max_text_length).map(move |v| { state.ingest(v).unwrap(); })
     }
 }
 
 parser! {
-    pub fn json_smart[I](state: ParserState)(I) -> ()
+    pub fn json_smart[I](state: ParserState, max_text_length: usize)(I) -> ()
     where [I: Stream<Item = char>]
     {
         factory(move ||
             if state.is_keeped() {
-                Either::Left(keep_json_smart(state.clone()))
+                Either::Left(keep_json_smart(state.clone(), *max_text_length))
             } else if state.is_containing_keeped() {
                 Either::Right(choice((
-                    throw_string(),
+                    throw_string(*max_text_length),
                     throw_number(),
                     throw_keyword(),
-                    array_smart(state.clone()),
-                    object_smart(state.clone()),
+                    array_smart(state.clone(), *max_text_length),
+                    object_smart(state.clone(), *max_text_length),
                 )).left())
             } else {
-                Either::Right(throw_json().right())
+                Either::Right(throw_json(*max_text_length).right())
             }
         )
     }

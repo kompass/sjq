@@ -3,11 +3,17 @@ use std::fs::OpenOptions;
 use std::io::stdout;
 use std::io::Write;
 use std::str::FromStr;
+use std::io::{stdin, Stdin};
+
+use combine::stream::Stream;
+use combine::error::ParseError;
+use combine::parser::Parser;
 
 use crate::filter::Filter;
-
 use crate::args_parser::ArgStruct;
 use crate::json_value::JsonValue;
+use crate::unicode_stream::ReadStream;
+use crate::parse_smart::{json_smart, ParserState};
 
 pub trait Pipeline {
     fn ingest(&mut self, item: JsonValue) -> Result<(), ()>;
@@ -68,6 +74,10 @@ impl<'a> PipelineBuilder<'a> {
         Filter::from_str(&self.0.query)
     }
 
+    pub fn build_input_stream(&self) -> Result<ReadStream<Stdin>, String> {
+        Ok(ReadStream::from_read_buffered(stdin(), self.0.max_text_length))
+    }
+
     pub fn build_pipeline(&self) -> Result<Box<dyn Pipeline>, String> {
         let output_stage: Box<dyn Pipeline> = if let Some(ref filename) = self.0.output {
             let output_writer = OpenOptions::new()
@@ -97,6 +107,19 @@ impl<'a> PipelineBuilder<'a> {
             "pipeline_status",
             JsonValue::String("running".to_string()),
         )))
+    }
+
+    pub fn build_parser<I>(&self) -> Result<impl Parser<Input = I, Output = ()>, String>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+    {
+        let filter = self.build_filter().unwrap();
+        let pipeline = self.build_pipeline().unwrap();
+        let state = ParserState::new(pipeline, filter);
+
+        // TODO: Parse stream of objects (using many::<(), _> or else)
+        Ok(json_smart(state, self.0.max_text_length))
     }
 }
 

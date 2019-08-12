@@ -109,7 +109,7 @@ impl Filter {
         self.compare(pos, true)
     }
 
-    fn parser<I>() -> impl Parser<Input = I, Output = Filter>
+    fn parser<I>(max_text_length: usize) -> impl Parser<Input = I, Output = Filter>
     where
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -148,10 +148,10 @@ impl Filter {
             .map(|array_filter| FilterPart::Array(array_filter));
 
         let branch_filter_expr = token('.').with(
-            string_expr()
-                .or(ident_expr())
+            string_expr(max_text_length)
+                .or(ident_expr(max_text_length))
                 .map(|branch_name| FilterPart::Branch(BranchFilter::TextMatch(branch_name)))
-                .or(regex_expr().map(|reg| FilterPart::Branch(BranchFilter::RegexMatch(reg)))),
+                .or(regex_expr(max_text_length).map(|reg| FilterPart::Branch(BranchFilter::RegexMatch(reg)))),
         );
 
         let filter_part_expr = array_filter_expr.or(branch_filter_expr);
@@ -180,7 +180,7 @@ impl FromStr for Filter {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parser()
+        Self::parser(s.len())
             .easy_parse(s)
             .map(|(filter, _)| filter)
             .map_err(|err| format!("{}", err))

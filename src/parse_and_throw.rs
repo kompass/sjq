@@ -17,12 +17,12 @@ where
     number_lex().map(|_| ())
 }
 
-pub fn throw_string<I>() -> impl Parser<Input = I, Output = ()>
+pub fn throw_string<I>(max_length: usize) -> impl Parser<Input = I, Output = ()>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    string_lex().map(|_| ())
+    string_lex(max_length).map(|_| ())
 }
 
 pub fn throw_keyword<I>() -> impl Parser<Input = I, Output = ()>
@@ -39,7 +39,7 @@ where
     choice((null_val, true_val, false_val))
 }
 
-fn throw_array_<I>() -> impl Parser<Input = I, Output = ()>
+fn throw_array_<I>(max_text_length: usize) -> impl Parser<Input = I, Output = ()>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -47,24 +47,24 @@ where
     between(
         token_lex('['),
         token_lex(']'),
-        sep_by::<(), _, _>(throw_json(), token_lex(',')),
+        sep_by::<(), _, _>(throw_json(max_text_length), token_lex(',')),
     )
 }
 
 parser! {
-    fn throw_array[I]()(I) -> ()
+    fn throw_array[I](max_text_length: usize)(I) -> ()
     where [I: Stream<Item = char>]
     {
-        throw_array_()
+        throw_array_(*max_text_length)
     }
 }
 
-fn throw_object_<I>() -> impl Parser<Input = I, Output = ()>
+fn throw_object_<I>(max_text_length: usize) -> impl Parser<Input = I, Output = ()>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let field = string_lex().skip(token_lex(':')).with(throw_json());
+    let field = string_lex(max_text_length).skip(token_lex(':')).with(throw_json(max_text_length));
 
     between(
         token_lex('{'),
@@ -74,32 +74,32 @@ where
 }
 
 parser! {
-    fn throw_object[I]()(I) -> ()
+    fn throw_object[I](max_text_length: usize)(I) -> ()
     where [I: Stream<Item = char>]
     {
-        throw_object_()
+        throw_object_(*max_text_length)
     }
 }
 
-fn throw_json_<I>() -> impl Parser<Input = I, Output = ()>
+fn throw_json_<I>(max_text_length: usize) -> impl Parser<Input = I, Output = ()>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        throw_string(),
+        throw_string(max_text_length),
         throw_number(),
         throw_keyword(),
-        throw_array(),
-        throw_object(),
+        throw_array(max_text_length),
+        throw_object(max_text_length),
     ))
 }
 
 parser! {
-    pub fn throw_json[I]()(I) -> ()
+    pub fn throw_json[I](max_text_length: usize)(I) -> ()
     where [I: Stream<Item = char>]
     {
-        throw_json_()
+        throw_json_(*max_text_length)
     }
 }
 

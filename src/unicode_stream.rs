@@ -42,12 +42,12 @@ pub struct ReadStream<R: Read>(
 );
 
 impl<R: Read> ReadStream<R> {
-    pub fn from_read_buffered(input: R) -> ReadStream<R> {
+    pub fn from_read_buffered(input: R, buffer_size: usize) -> ReadStream<R> {
         let char_iter = ReadIterator::from_read_buffered(input);
 
         ReadStream(BufferedStream::new(
             State::with_positioner(IteratorStream::new(char_iter), SourcePosition::new()),
-            1,
+            buffer_size,
         ))
     }
 }
