@@ -11,6 +11,7 @@ readme = "README.md"
 [dependencies]
 combine = "3.8"
 either = "1.5"
+lexical = "2.2"
 regex = "1.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

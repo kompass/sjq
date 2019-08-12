@@ -115,7 +115,7 @@ mod tests {
         let expr = r#"{"pomme" : { "taille" :          12345,   "couleur": "jaune" },
         "random_array": [1, 2, 3    , "word" ]}"#;
 
-        let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1);
+        let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1000);
         assert_eq!(throw_json().parse(stream).unwrap().0, ());
     }
 }

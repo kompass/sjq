@@ -14,7 +14,7 @@ use combine::parser::repeat::{many, sep_by1};
 use combine::parser::sequence::between;
 
 use crate::json_path::{JsonPath, JsonPathStep};
-use crate::parse_basics::{ident_expr, number_expr, regex_expr, string_expr, token_lex};
+use crate::parse_basics::{ident_expr, index_expr, regex_expr, string_expr, token_lex};
 
 pub enum BranchFilter {
     TextMatch(String),
@@ -114,10 +114,10 @@ impl Filter {
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
     {
-        let array_filter_expr_internal = number_expr()
+        let array_filter_expr_internal = index_expr()
             .and(optional(choice((
-                many::<Vec<_>, _>(token(',').with(number_expr())).map(|v| ArrayFilter::OneOf(v)),
-                token(':').with(number_expr()).map(|right_bound| {
+                many::<Vec<_>, _>(token(',').with(index_expr())).map(|v| ArrayFilter::OneOf(v)),
+                token(':').with(index_expr()).map(|right_bound| {
                     ArrayFilter::Range(Range {
                         start: 0,
                         end: right_bound,

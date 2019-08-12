@@ -1,23 +1,70 @@
 use regex::Regex;
+use lexical;
 
 use combine::error::ParseError;
 use combine::stream::{Stream, StreamOnce};
 
-use combine::parser::char::string;
-use combine::parser::char::{alpha_num, digit, letter, spaces};
+use combine::parser::char::{alpha_num, digit, letter, spaces, string};
+use combine::parser::choice::optional;
+use combine::parser::item::one_of;
+use combine::parser::combinator::recognize;
 use combine::parser::item::{any, none_of, token};
-use combine::parser::repeat::{many, many1};
+use combine::parser::repeat::{many, many1, skip_many1};
 use combine::parser::sequence::between;
 use combine::parser::Parser;
 
-pub fn number_expr<I>() -> impl Parser<Input = I, Output = u64>
+use crate::json_value::JsonValue;
+
+pub fn index_expr<I>() -> impl Parser<Input = I, Output = u64>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let expr = many1::<String, _>(digit()); // TODO: accept neg and float
+    let expr = many1::<String, _>(digit());
 
-    expr.map(|s: String| s.parse::<u64>().unwrap()) // TODO: check overflow
+    expr.map(|s: String| s.parse::<u64>().unwrap())
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum NumberVal {
+    Integer(i64),
+    Float(f64),
+}
+
+impl Into<JsonValue> for NumberVal {
+    fn into(self) -> JsonValue {
+        match self {
+            NumberVal::Integer(n) => JsonValue::Integer(n),
+            NumberVal::Float(f) => JsonValue::Float(f),
+        }
+    }
+}
+
+pub fn number_expr<I>() -> impl Parser<Input = I, Output = NumberVal>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    let expr = recognize::<String, _>((
+        optional(one_of("-+".chars())),
+        skip_many1(digit()),
+        optional((token('.'), skip_many1(digit()))),
+        optional((
+            one_of("eE".chars()),
+            optional(one_of("-+".chars())),
+            skip_many1(digit())
+        )),
+    ));
+
+    expr.map(|s: String| {
+        dbg!(&s);
+        let float_evidences = ['.', 'e', 'E'];
+        if s.contains(float_evidences.as_ref()) {
+            NumberVal::Float(lexical::try_parse(&s).unwrap()) // TODO: Let the user choose try_parse_lossy or not
+        } else {
+            NumberVal::Integer(lexical::try_parse(&s).unwrap())
+        }
+    })
 }
 
 pub fn string_expr<I>() -> impl Parser<Input = I, Output = String>
@@ -84,7 +131,7 @@ where
     p.skip(spaces())
 }
 
-pub fn number_lex<I>() -> impl Parser<Input = I, Output = u64>
+pub fn number_lex<I>() -> impl Parser<Input = I, Output = NumberVal>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -126,7 +173,7 @@ mod tests {
     macro_rules! assert_parse_exprs {
         ($parser:expr, $exprs_and_expected:expr) => {
             for (expr, expected) in $exprs_and_expected {
-                let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1);
+                let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 100);
 
                 assert_eq!($parser.parse(stream).unwrap().0, expected);
             }
@@ -135,7 +182,7 @@ mod tests {
 
     #[test]
     fn parse_string() {
-        let expected = vec!["guillotine", "UpPeR", "Let's make revolution!"];
+        let expected = vec!["guillotine", "UpPeR", "Text with spaces and ponctuation ? WOW, such text !"];
 
         let exprs_and_expected: Vec<(String, _)> = expected
             .into_iter()
@@ -146,13 +193,28 @@ mod tests {
     }
 
     #[test]
-    fn parse_number() {
-        let expected = vec![0u64, 1u64, 9u64, 10u64, 123456789u64];
+    fn parse_integer() {
+        let expected = vec![0i64, 1i64, 9i64, 10i64, 123456789i64, -1i64, -1345601i64];
 
         let exprs_and_expected: Vec<(String, _)> =
-            expected.into_iter().map(|e| (e.to_string(), e)).collect();
+            expected.into_iter().map(|e| (e.to_string(), NumberVal::Integer(e))).collect();
 
         assert_parse_exprs!(number_expr(), exprs_and_expected);
+    }
+
+    #[test]
+    fn parse_float() {
+        let expected = vec![0.1f64, 1f64, 1.1f64, 10.12345f64, 3.3333f64, -1f64, -0.1f64, -134560.2f64];
+
+        let exprs_and_expected: Vec<(String, _)> =
+            expected.into_iter().map(|e| (e.to_string(), NumberVal::Float(e))).collect();
+
+        assert_parse_exprs!(number_expr(), exprs_and_expected);
+    }
+
+    #[test]
+    fn parse_float_with_exponent() {
+
     }
 
     #[test]

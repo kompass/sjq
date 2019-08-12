@@ -11,14 +11,14 @@ use combine::parser::sequence::between;
 use combine::parser::Parser;
 
 use crate::json_value::JsonValue;
-use crate::parse_basics::{keyword_lex, number_lex, string_lex, token_lex};
+use crate::parse_basics::{NumberVal, keyword_lex, number_lex, string_lex, token_lex};
 
 fn keep_number<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    number_lex().map(|n: u64| JsonValue::Number(n))
+    number_lex().map(|n: NumberVal| n.into())
 }
 
 fn keep_string<I>() -> impl Parser<Input = I, Output = JsonValue>
@@ -127,7 +127,7 @@ mod tests {
                     "pomme".to_string(),
                     JsonValue::Object(
                         [
-                            ("taille".to_string(), JsonValue::Number(12345)),
+                            ("taille".to_string(), JsonValue::Integer(12345)),
                             (
                                 "couleur".to_string(),
                                 JsonValue::String("jaune".to_string()),
@@ -141,9 +141,9 @@ mod tests {
                 (
                     "random_array".to_string(),
                     JsonValue::Array(vec![
-                        JsonValue::Number(1),
-                        JsonValue::Number(2),
-                        JsonValue::Number(3),
+                        JsonValue::Integer(1),
+                        JsonValue::Integer(2),
+                        JsonValue::Integer(3),
                         JsonValue::String("word".to_string()),
                     ]),
                 ),
@@ -153,7 +153,7 @@ mod tests {
             .collect(),
         );
 
-        let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1);
+        let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1000);
         assert_eq!(keep_json().parse(stream).unwrap().0, expected);
     }
 }
