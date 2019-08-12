@@ -8,6 +8,8 @@ use std::io::{stdin, Stdin};
 use combine::stream::Stream;
 use combine::error::ParseError;
 use combine::parser::Parser;
+use combine::parser::repeat::skip_many;
+use combine::parser::item::eof;
 
 use crate::filter::Filter;
 use crate::args_parser::ArgStruct;
@@ -119,7 +121,7 @@ impl<'a> PipelineBuilder<'a> {
         let state = ParserState::new(pipeline, filter);
 
         // TODO: Parse stream of objects (using many::<(), _> or else)
-        Ok(json_smart(state, self.0.max_text_length))
+        Ok(skip_many(json_smart(state, self.0.max_text_length)).skip(eof()))
     }
 }
 
