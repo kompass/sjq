@@ -1,3 +1,15 @@
+use std::str::FromStr;
+
+use combine::parser::Parser;
+
+use combine::parser::item::{eof, token};
+use combine::parser::repeat::many1;
+use combine::parser::combinator::attempt;
+use combine::parser::choice::choice;
+use combine::parser::sequence::between;
+
+use crate::parse_basics::{ident_expr, index_expr, string_expr};
+
 /// Represents a step in a JSON path.
 ///
 /// Since the arrays and the objects are the only elements of a JSON document containing sub-elements,
@@ -87,5 +99,31 @@ impl JsonPath {
     /// Get the number of steps of the path.
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+}
+
+impl FromStr for JsonPath {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let max_text_length = s.len();
+
+        let field_path_expr = token('.').with(string_expr(max_text_length).or(ident_expr(max_text_length)))
+            .map(|field_name| JsonPathStep::Field(field_name));
+
+        let index_path_expr = between(token('['), token(']'), index_expr())
+            .map(|array_index| JsonPathStep::Index(array_index));
+
+        let path_step_expr = field_path_expr.or(index_path_expr);
+
+        let mut path_expr = choice((
+            attempt((token('.'), eof())).map(|_| JsonPath::root()),
+            many1::<Vec<_>, _>(path_step_expr).skip(eof()).map(|v| JsonPath(v)),
+        ));
+
+        let (path, rest) = path_expr.parse(s).unwrap();
+        assert!(rest.is_empty());
+
+        Ok(path)
     }
 }

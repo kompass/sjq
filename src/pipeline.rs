@@ -18,13 +18,13 @@ use crate::unicode_stream::ReadStream;
 use crate::parse_smart::{json_smart, ParserState};
 
 pub trait Pipeline {
-    fn ingest(&mut self, item: JsonValue) -> Result<(), ()>;
+    fn ingest(&mut self, item: JsonValue) -> Result<(), String>;
 }
 
 pub struct WriteStage<W: Write>(W);
 
 impl<W: Write> Pipeline for WriteStage<W> {
-    fn ingest(&mut self, item: JsonValue) -> Result<(), ()> {
+    fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
         serde_json::to_writer(&mut self.0, &item).unwrap();
         writeln!(&mut self.0).unwrap();
         Ok(())
@@ -34,7 +34,7 @@ impl<W: Write> Pipeline for WriteStage<W> {
 pub struct WritePrettyStage<W: Write>(W);
 
 impl<W: Write> Pipeline for WritePrettyStage<W> {
-    fn ingest(&mut self, item: JsonValue) -> Result<(), ()> {
+    fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
         serde_json::to_writer_pretty(&mut self.0, &item).unwrap();
         writeln!(&mut self.0).unwrap();
         Ok(())
@@ -58,13 +58,13 @@ impl AddFieldStage {
 }
 
 impl Pipeline for AddFieldStage {
-    fn ingest(&mut self, mut item: JsonValue) -> Result<(), ()> {
+    fn ingest(&mut self, mut item: JsonValue) -> Result<(), String> {
         if let JsonValue::Object(ref mut obj) = item {
             obj.insert(self.key.clone(), self.value.clone());
 
             self.output.ingest(item)
         } else {
-            Err(())
+            Err("Can't add a field to a non-object value.".to_string())
         }
     }
 }

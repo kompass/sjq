@@ -65,7 +65,7 @@ impl ParserState {
         self.0.filter.is_subpath(&self.0.pos.borrow())
     }
 
-    fn ingest(&self, item: JsonValue) -> Result<(), ()> {
+    fn ingest(&self, item: JsonValue) -> Result<(), String> {
         self.0.pipeline.borrow_mut().ingest(item)
     }
 }
