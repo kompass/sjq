@@ -1,5 +1,5 @@
-use structopt::StructOpt;
 use lexical;
+use structopt::StructOpt;
 
 use crate::parse_basics::NUMBER_MAX_LENGTH;
 
@@ -7,7 +7,10 @@ fn validate_max_text_length(val: String) -> Result<(), String> {
     let val: usize = lexical::parse(val);
 
     if val < *&*NUMBER_MAX_LENGTH {
-        Err(format!("--max_text_length must be bigger than {}.", *&*NUMBER_MAX_LENGTH))
+        Err(format!(
+            "--max_text_length must be bigger than {}.",
+            *&*NUMBER_MAX_LENGTH
+        ))
     } else {
         Ok(())
     }
@@ -38,7 +41,12 @@ pub struct ArgStruct {
     pub pretty: bool,
 
     /// Max length of a string value, a field name or a regex
-    #[structopt(short, long, default_value = "4096", raw(validator = "validate_max_text_length"))]
+    #[structopt(
+        short,
+        long,
+        default_value = "4096",
+        raw(validator = "validate_max_text_length")
+    )]
     pub max_text_length: usize,
 
     /// Filter and pipeline query

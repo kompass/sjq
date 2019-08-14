@@ -2,20 +2,20 @@ use std::convert::From;
 use std::fs::OpenOptions;
 use std::io::stdout;
 use std::io::Write;
-use std::str::FromStr;
 use std::io::{stdin, Stdin};
+use std::str::FromStr;
 
-use combine::stream::Stream;
 use combine::error::ParseError;
-use combine::parser::Parser;
-use combine::parser::repeat::skip_many;
 use combine::parser::item::eof;
+use combine::parser::repeat::skip_many;
+use combine::parser::Parser;
+use combine::stream::Stream;
 
-use crate::filter::Filter;
 use crate::args_parser::ArgStruct;
+use crate::filter::Filter;
 use crate::json_value::JsonValue;
-use crate::unicode_stream::ReadStream;
 use crate::parse_smart::{json_smart, ParserState};
+use crate::unicode_stream::ReadStream;
 
 pub trait Pipeline {
     fn ingest(&mut self, item: JsonValue) -> Result<(), String>;
@@ -77,7 +77,10 @@ impl<'a> PipelineBuilder<'a> {
     }
 
     pub fn build_input_stream(&self) -> Result<ReadStream<Stdin>, String> {
-        Ok(ReadStream::from_read_buffered(stdin(), self.0.max_text_length))
+        Ok(ReadStream::from_read_buffered(
+            stdin(),
+            self.0.max_text_length,
+        ))
     }
 
     pub fn build_pipeline(&self) -> Result<Box<dyn Pipeline>, String> {

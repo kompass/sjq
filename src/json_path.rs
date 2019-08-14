@@ -2,10 +2,10 @@ use std::str::FromStr;
 
 use combine::parser::Parser;
 
+use combine::parser::choice::choice;
+use combine::parser::combinator::attempt;
 use combine::parser::item::{eof, token};
 use combine::parser::repeat::many1;
-use combine::parser::combinator::attempt;
-use combine::parser::choice::choice;
 use combine::parser::sequence::between;
 
 use crate::parse_basics::{ident_expr, index_expr, string_expr};
@@ -108,7 +108,8 @@ impl FromStr for JsonPath {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let max_text_length = s.len();
 
-        let field_path_expr = token('.').with(string_expr(max_text_length).or(ident_expr(max_text_length)))
+        let field_path_expr = token('.')
+            .with(string_expr(max_text_length).or(ident_expr(max_text_length)))
             .map(|field_name| JsonPathStep::Field(field_name));
 
         let index_path_expr = between(token('['), token(']'), index_expr())
@@ -118,7 +119,9 @@ impl FromStr for JsonPath {
 
         let mut path_expr = choice((
             attempt((token('.'), eof())).map(|_| JsonPath::root()),
-            many1::<Vec<_>, _>(path_step_expr).skip(eof()).map(|v| JsonPath(v)),
+            many1::<Vec<_>, _>(path_step_expr)
+                .skip(eof())
+                .map(|v| JsonPath(v)),
         ));
 
         let (path, rest) = path_expr.parse(s).unwrap();

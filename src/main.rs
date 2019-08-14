@@ -19,7 +19,7 @@ use crate::pipeline::PipelineBuilder;
 
 use crate::args_parser::ArgStruct;
 
-// TODO: Remove as unwrap as possible in all src/ by panics and error messages (fail fast)
+// TODO: Remove as much unwrap as possible in all src/ by panics and error messages (fail fast)
 
 fn main() {
     let _ = include_str!("../Cargo.toml"); //Trigger the rebuild automatism when Cargo.toml is changed

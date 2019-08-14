@@ -2,16 +2,16 @@ use std::collections::HashMap;
 use std::iter::FromIterator;
 
 use combine::error::ParseError;
+use combine::parser::Parser;
 use combine::stream::Stream;
 use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
-use combine::parser::Parser;
 
 use combine::parser::choice::choice;
 use combine::parser::repeat::sep_by;
 use combine::parser::sequence::between;
 
 use crate::json_value::JsonValue;
-use crate::parse_basics::{NumberVal, keyword_lex, number_lex, string_lex, token_lex};
+use crate::parse_basics::{keyword_lex, number_lex, string_lex, token_lex, NumberVal};
 
 fn keep_number<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
@@ -69,7 +69,9 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let field = string_lex(max_text_length).skip(token_lex(':')).and(keep_json(max_text_length));
+    let field = string_lex(max_text_length)
+        .skip(token_lex(':'))
+        .and(keep_json(max_text_length));
 
     let expr = between(
         token_lex('{'),

@@ -151,7 +151,8 @@ impl Filter {
             string_expr(max_text_length)
                 .or(ident_expr(max_text_length))
                 .map(|branch_name| FilterPart::Branch(BranchFilter::TextMatch(branch_name)))
-                .or(regex_expr(max_text_length).map(|reg| FilterPart::Branch(BranchFilter::RegexMatch(reg)))),
+                .or(regex_expr(max_text_length)
+                    .map(|reg| FilterPart::Branch(BranchFilter::RegexMatch(reg)))),
         );
 
         let filter_part_expr = array_filter_expr.or(branch_filter_expr);

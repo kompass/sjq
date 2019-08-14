@@ -64,7 +64,9 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let field = string_lex(max_text_length).skip(token_lex(':')).with(throw_json(max_text_length));
+    let field = string_lex(max_text_length)
+        .skip(token_lex(':'))
+        .with(throw_json(max_text_length));
 
     between(
         token_lex('{'),
