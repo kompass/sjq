@@ -17,7 +17,7 @@ pub enum JsonValue {
 }
 
 impl JsonValue {
-    pub fn select<'a>(&'a self, path: JsonPath) -> Option<&'a JsonValue> {
+    pub fn select<'a>(&'a self, path: &JsonPath) -> Option<&'a JsonValue> {
         let mut selected = self;
 
         for step in path.iter() {

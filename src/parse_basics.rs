@@ -1,6 +1,7 @@
 use lexical;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::convert::TryFrom;
 
 use combine::error::ParseError;
 use combine::stream::{Stream, StreamOnce};
@@ -50,7 +51,7 @@ where
     expr.map(|s: String| lexical::try_parse(&s).unwrap())
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NumberVal {
     Integer(i64),
     Float(f64),
@@ -59,8 +60,20 @@ pub enum NumberVal {
 impl Into<JsonValue> for NumberVal {
     fn into(self) -> JsonValue {
         match self {
-            NumberVal::Integer(n) => JsonValue::Integer(n),
+            NumberVal::Integer(i) => JsonValue::Integer(i),
             NumberVal::Float(f) => JsonValue::Float(f),
+        }
+    }
+}
+
+impl TryFrom<&JsonValue> for NumberVal {
+    type Error = String;
+
+    fn try_from(val: &JsonValue) -> Result<NumberVal, Self::Error> {
+        match val {
+            JsonValue::Integer(i) => Ok(NumberVal::Integer(*i)),
+            JsonValue::Float(f) => Ok(NumberVal::Float(*f)),
+            _ => Err("Impossible to convert a non-number json value to a number.".to_string()),
         }
     }
 }
