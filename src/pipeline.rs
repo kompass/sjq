@@ -158,7 +158,7 @@ impl<'a> PipelineBuilder<'a> {
     }
 
     pub fn build_input_stream(&self) -> Result<ReadStream<Stdin>, String> {
-        Ok(ReadStream::from_read_buffered(
+        Ok(ReadStream::from_read_buffered_normalized(
             stdin(),
             self.0.max_text_length,
         ))

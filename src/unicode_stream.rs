@@ -1,6 +1,7 @@
 use std::io::{BufReader, Bytes, Read};
 use std::iter::Iterator;
 use unicode_reader::CodePoints;
+use unicode_normalization::{UnicodeNormalization, Recompositions};
 
 use combine::error::UnexpectedParse;
 use combine::stream::buffered::BufferedStream;
@@ -10,12 +11,16 @@ use combine::stream::{IteratorStream, Positioned, Resetable, StreamErrorFor, Str
 pub struct ReadIterator<R: Read>(Option<CodePoints<Bytes<R>>>);
 
 impl<R: Read> ReadIterator<R> {
-    pub fn from_read(input: R) -> ReadIterator<R> {
+    fn from_read(input: R) -> ReadIterator<R> {
         ReadIterator(Some(CodePoints::from(input)))
     }
 
-    pub fn from_read_buffered(input: R) -> ReadIterator<BufReader<R>> {
+    fn from_read_buffered(input: R) -> ReadIterator<BufReader<R>> {
         ReadIterator::from_read(BufReader::new(input))
+    }
+
+    pub fn from_read_buffered_normalized(input: R) -> Recompositions<ReadIterator<BufReader<R>>> {
+        ReadIterator::from_read_buffered(input).nfc()
     }
 }
 
@@ -38,12 +43,12 @@ impl<R: Read> Iterator for ReadIterator<R> {
 }
 
 pub struct ReadStream<R: Read>(
-    BufferedStream<State<IteratorStream<ReadIterator<BufReader<R>>>, SourcePosition>>,
+    BufferedStream<State<IteratorStream<Recompositions<ReadIterator<BufReader<R>>>>, SourcePosition>>,
 );
 
 impl<R: Read> ReadStream<R> {
-    pub fn from_read_buffered(input: R, buffer_size: usize) -> ReadStream<R> {
-        let char_iter = ReadIterator::from_read_buffered(input);
+    pub fn from_read_buffered_normalized(input: R, buffer_size: usize) -> ReadStream<R> {
+        let char_iter = ReadIterator::from_read_buffered_normalized(input);
 
         ReadStream(BufferedStream::new(
             State::with_positioner(IteratorStream::new(char_iter), SourcePosition::new()),
