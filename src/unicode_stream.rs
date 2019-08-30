@@ -1,7 +1,7 @@
 use std::io::{BufReader, Bytes, Read};
 use std::iter::Iterator;
+use unicode_normalization::{Recompositions, UnicodeNormalization};
 use unicode_reader::CodePoints;
-use unicode_normalization::{UnicodeNormalization, Recompositions};
 
 use combine::error::UnexpectedParse;
 use combine::stream::buffered::BufferedStream;
@@ -43,7 +43,9 @@ impl<R: Read> Iterator for ReadIterator<R> {
 }
 
 pub struct ReadStream<R: Read>(
-    BufferedStream<State<IteratorStream<Recompositions<ReadIterator<BufReader<R>>>>, SourcePosition>>,
+    BufferedStream<
+        State<IteratorStream<Recompositions<ReadIterator<BufReader<R>>>>, SourcePosition>,
+    >,
 );
 
 impl<R: Read> ReadStream<R> {
