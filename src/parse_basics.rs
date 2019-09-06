@@ -4,8 +4,6 @@ use regex::Regex;
 use std::convert::TryFrom;
 
 use combine::error::ParseError;
-use combine::stream::{Stream, StreamOnce};
-
 use combine::parser::char::{alpha_num, digit, letter, spaces, string};
 use combine::parser::choice::optional;
 use combine::parser::combinator::recognize;
@@ -14,6 +12,7 @@ use combine::parser::item::{any, none_of, token};
 use combine::parser::repeat::{count, count_min_max, skip_count_min_max};
 use combine::parser::sequence::between;
 use combine::parser::Parser;
+use combine::stream::{Stream, StreamOnce};
 
 use crate::json_value::JsonValue;
 
@@ -165,7 +164,7 @@ where
     string(keyword).map(|_| ())
 }
 
-fn lex<P>(p: P) -> impl Parser<Input = P::Input, Output = P::Output>
+pub fn lex<P>(p: P) -> impl Parser<Input = P::Input, Output = P::Output>
 where
     P: Parser,
     P::Input: Stream<Item = char>,
@@ -200,6 +199,14 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(keyword_expr(keyword))
+}
+
+pub fn ident_lex<I>(max_length: usize) -> impl Parser<Input = I, Output = String>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    lex(ident_expr(max_length))
 }
 
 pub fn token_lex<I>(c: char) -> impl Parser<Input = I, Output = ()>

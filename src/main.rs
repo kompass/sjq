@@ -8,16 +8,17 @@ mod json_value;
 mod parse_and_keep;
 mod parse_and_throw;
 mod parse_basics;
+mod parse_query;
 mod parse_smart;
 mod pipeline;
+mod pipeline_builder;
 mod unicode_stream;
 
 use combine::parser::Parser;
 use structopt::StructOpt;
 
-use crate::pipeline::PipelineBuilder;
-
 use crate::args_parser::ArgStruct;
+use crate::pipeline_builder::PipelineBuilder;
 
 // TODO: Remove as much unwrap as possible in all src/ by panics and error messages (fail fast)
 

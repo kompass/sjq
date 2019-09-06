@@ -1,25 +1,11 @@
 use std::cell::Cell;
-use std::convert::From;
 use std::convert::TryFrom;
-use std::fs::OpenOptions;
-use std::io::stdout;
 use std::io::Write;
-use std::io::{stdin, Stdin};
-use std::str::FromStr;
 
-use combine::error::ParseError;
-use combine::parser::item::eof;
-use combine::parser::repeat::skip_many;
-use combine::parser::Parser;
-use combine::stream::Stream;
-
-use crate::args_parser::ArgStruct;
-use crate::filter::Filter;
 use crate::json_path::JsonPath;
 use crate::json_value::JsonValue;
 use crate::parse_basics::NumberVal;
-use crate::parse_smart::{json_smart, ParserState};
-use crate::unicode_stream::ReadStream;
+use crate::pipeline_builder::StageArg;
 
 pub trait Pipeline {
     /// Ingest stream items one by one, in the right order.
@@ -35,6 +21,12 @@ pub trait Pipeline {
 
 pub struct WriteStage<W: Write>(W);
 
+impl<W: Write> WriteStage<W> {
+    pub fn new(output: W) -> WriteStage<W> {
+        WriteStage(output)
+    }
+}
+
 impl<W: Write> Pipeline for WriteStage<W> {
     fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
         serde_json::to_writer(&mut self.0, &item).unwrap();
@@ -48,6 +40,12 @@ impl<W: Write> Pipeline for WriteStage<W> {
 }
 
 pub struct WritePrettyStage<W: Write>(W);
+
+impl<W: Write> WritePrettyStage<W> {
+    pub fn new(output: W) -> WritePrettyStage<W> {
+        WritePrettyStage(output)
+    }
+}
 
 impl<W: Write> Pipeline for WritePrettyStage<W> {
     fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
@@ -73,6 +71,27 @@ impl AddFieldStage {
             key: key.to_string(),
             value,
             output,
+        }
+    }
+
+    pub fn from_args(
+        output: Box<dyn Pipeline>,
+        args: &[StageArg],
+    ) -> Result<Box<dyn Pipeline>, String> {
+        if args.len() != 2 {
+            Err("add_field : Wrong number of arguments.".to_string())
+        } else {
+            if let (StageArg::String(ref key), StageArg::String(ref value)) =
+                (args.get(0).unwrap(), args.get(1).unwrap())
+            {
+                Ok(Box::new(Self::new(
+                    output,
+                    &key,
+                    JsonValue::String(value.clone()),
+                )))
+            } else {
+                Err("add_field : Wrong type of arguments.".to_string())
+            }
         }
     }
 }
@@ -107,6 +126,21 @@ impl SumStage {
             summed_value,
             strict,
             output,
+        }
+    }
+
+    pub fn from_args(
+        output: Box<dyn Pipeline>,
+        args: &[StageArg],
+    ) -> Result<Box<dyn Pipeline>, String> {
+        if args.len() != 1 {
+            Err("sum : Wrong number of arguments.".to_string())
+        } else {
+            if let StageArg::Path(ref path) = args.get(0).unwrap() {
+                Ok(Box::new(Self::new(output, path.clone(), false)))
+            } else {
+                Err("sum : Wrong type of arguments.".to_string())
+            }
         }
     }
 }
@@ -147,69 +181,5 @@ impl Pipeline for SumStage {
         self.acc.replace(None);
 
         Ok(())
-    }
-}
-
-pub struct PipelineBuilder<'a>(&'a ArgStruct);
-
-impl<'a> PipelineBuilder<'a> {
-    pub fn build_filter(&self) -> Result<Filter, String> {
-        Filter::from_str(&self.0.query)
-    }
-
-    pub fn build_input_stream(&self) -> Result<ReadStream<Stdin>, String> {
-        Ok(ReadStream::from_read_buffered_normalized(
-            stdin(),
-            self.0.max_text_length,
-        ))
-    }
-
-    pub fn build_pipeline(&self) -> Result<Box<dyn Pipeline>, String> {
-        let output_stage: Box<dyn Pipeline> = if let Some(ref filename) = self.0.output {
-            let output_writer = OpenOptions::new()
-                .write(true)
-                .append(self.0.append)
-                .create_new(self.0.force_new)
-                .open(filename)
-                .unwrap();
-
-            if self.0.pretty {
-                Box::new(WritePrettyStage(output_writer))
-            } else {
-                Box::new(WriteStage(output_writer))
-            }
-        } else {
-            let output_writer = stdout();
-
-            if self.0.pretty {
-                Box::new(WritePrettyStage(output_writer))
-            } else {
-                Box::new(WriteStage(output_writer))
-            }
-        };
-
-        Ok(Box::new(AddFieldStage::new(
-            output_stage,
-            "pipeline_status",
-            JsonValue::String("running".to_string()),
-        )))
-    }
-
-    pub fn build_parser<I>(&self) -> Result<impl Parser<Input = I, Output = ()>, String>
-    where
-        I: Stream<Item = char>,
-        I::Error: ParseError<I::Item, I::Range, I::Position>,
-    {
-        let filter = self.build_filter().unwrap();
-        let pipeline = self.build_pipeline().unwrap();
-        let state = ParserState::new(pipeline, filter);
-
-        Ok(skip_many(json_smart(state, self.0.max_text_length)).skip(eof()))
-    }
-}
-
-impl<'a> From<&'a ArgStruct> for PipelineBuilder<'a> {
-    fn from(args: &'a ArgStruct) -> PipelineBuilder<'a> {
-        PipelineBuilder(&args)
     }
 }

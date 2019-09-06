@@ -1,11 +1,10 @@
 use combine::error::ParseError;
-use combine::stream::Stream;
-use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
-
 use combine::parser::choice::choice;
 use combine::parser::repeat::sep_by;
 use combine::parser::sequence::between;
 use combine::parser::Parser;
+use combine::stream::Stream;
+use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
 
 use crate::parse_basics::{keyword_lex, number_lex, string_lex, token_lex};
 
@@ -118,6 +117,6 @@ mod tests {
         "random_array": [1, 2, 3    , "word" ]}"#;
 
         let stream = BufferedStream::new(State::new(IteratorStream::new(expr.chars())), 1000);
-        assert_eq!(throw_json().parse(stream).unwrap().0, ());
+        assert_eq!(throw_json(expr.len()).parse(stream).unwrap().0, ());
     }
 }

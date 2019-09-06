@@ -1,20 +1,7 @@
 use regex::Regex;
 use std::ops::Range;
-use std::str::FromStr;
-
-use combine::attempt;
-use combine::error::ParseError;
-use combine::parser::Parser;
-use combine::stream::Stream;
-
-use combine::parser::choice::{choice, optional};
-use combine::parser::item::eof;
-use combine::parser::item::token;
-use combine::parser::repeat::{many, sep_by1};
-use combine::parser::sequence::between;
 
 use crate::json_path::{JsonPath, JsonPathStep};
-use crate::parse_basics::{ident_expr, index_expr, regex_expr, string_expr, token_lex};
 
 pub enum BranchFilter {
     TextMatch(String),
@@ -107,83 +94,5 @@ impl Filter {
 
     pub fn is_subpath(&self, pos: &JsonPath) -> bool {
         self.compare(pos, true)
-    }
-
-    fn parser<I>(max_text_length: usize) -> impl Parser<Input = I, Output = Filter>
-    where
-        I: Stream<Item = char>,
-        I::Error: ParseError<I::Item, I::Range, I::Position>,
-    {
-        let array_filter_expr_internal = index_expr()
-            .and(optional(choice((
-                many::<Vec<_>, _>(token(',').with(index_expr())).map(|v| ArrayFilter::OneOf(v)),
-                token(':').with(index_expr()).map(|right_bound| {
-                    ArrayFilter::Range(Range {
-                        start: 0,
-                        end: right_bound,
-                    })
-                }),
-            ))))
-            .map(|(num, maybe_rest)| {
-                if let Some(array_filter) = maybe_rest {
-                    match array_filter {
-                        ArrayFilter::OneOf(mut v) => {
-                            v.push(num);
-
-                            ArrayFilter::OneOf(v)
-                        }
-                        ArrayFilter::Range(mut r) => {
-                            r.start = num;
-
-                            ArrayFilter::Range(r)
-                        }
-                        ArrayFilter::ExactValue(_) => unreachable!(),
-                    }
-                } else {
-                    ArrayFilter::ExactValue(num)
-                }
-            });
-
-        let array_filter_expr = between(token('['), token(']'), array_filter_expr_internal)
-            .map(|array_filter| FilterPart::Array(array_filter));
-
-        let branch_filter_expr = token('.').with(
-            string_expr(max_text_length)
-                .or(ident_expr(max_text_length))
-                .map(|branch_name| FilterPart::Branch(BranchFilter::TextMatch(branch_name)))
-                .or(regex_expr(max_text_length)
-                    .map(|reg| FilterPart::Branch(BranchFilter::RegexMatch(reg)))),
-        );
-
-        let filter_part_expr = array_filter_expr.or(branch_filter_expr);
-
-        let filter_expr = attempt(token('.').skip(eof()).map(|_| vec![]))
-            .or(many::<Vec<_>, _>(filter_part_expr).skip(eof()))
-            .map(|v| {
-                if v.is_empty() {
-                    Filter::All
-                } else {
-                    Filter::Parts(v)
-                }
-            });
-
-        sep_by1::<Vec<_>, _, _>(filter_expr, token_lex(',')).map(|mut v| {
-            if v.len() == 1 {
-                v.pop().unwrap()
-            } else {
-                Filter::Union(v)
-            }
-        })
-    }
-}
-
-impl FromStr for Filter {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parser(s.len())
-            .easy_parse(s)
-            .map(|(filter, _)| filter)
-            .map_err(|err| format!("{}", err))
     }
 }
