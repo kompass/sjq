@@ -97,7 +97,6 @@ where
     ));
 
     expr.map(|s: String| {
-        dbg!(&s);
         let float_evidences = ['.', 'e', 'E'];
         if s.contains(float_evidences.as_ref()) {
             NumberVal::Float(lexical::try_parse(&s).unwrap()) // TODO: Let the user choose try_parse_lossy or not
@@ -146,7 +145,7 @@ where
 {
     letter()
         .and(count_min_max::<String, _>(
-            1,
+            0,
             max_length,
             alpha_num().or(token('_')),
         ))

@@ -68,6 +68,10 @@ impl ParserState {
     fn ingest(&self, item: JsonValue) -> Result<(), String> {
         self.0.pipeline.borrow_mut().ingest(item)
     }
+
+    pub fn finish(&self) -> Result<(), String> {
+        self.0.pipeline.borrow_mut().finish()
+    }
 }
 
 parser! {

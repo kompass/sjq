@@ -12,6 +12,9 @@ use combine::parser::repeat::sep_by1;
 use combine::parser::sequence::between;
 use combine::parser::Parser;
 use combine::stream::Stream;
+use combine::stream::state::State;
+use combine::parser::combinator::not_followed_by;
+use combine::char::alpha_num;
 
 use crate::filter::*;
 use crate::json_path::{JsonPath, JsonPathStep};
@@ -19,7 +22,6 @@ use crate::parse_basics::{
     ident_expr, ident_lex, index_expr, lex, number_lex, regex_expr, string_expr, string_lex,
     token_lex, NumberVal,
 };
-use crate::pipeline::Pipeline;
 use crate::pipeline::*;
 use crate::pipeline_builder::StageArg;
 
@@ -30,19 +32,20 @@ where
 {
     let field_path_expr = token('.')
         .with(string_expr(max_text_length).or(ident_expr(max_text_length)))
+        .message("field_path_expr")
         .map(|field_name| JsonPathStep::Field(field_name));
 
     let index_path_expr = between(token('['), token(']'), index_expr())
+        .message("index_path_expr")
         .map(|array_index| JsonPathStep::Index(array_index));
 
     let path_step_expr = field_path_expr.or(index_path_expr);
 
     choice((
-        attempt((token('.'), eof())).map(|_| JsonPath::root()),
-        many1::<Vec<_>, _>(path_step_expr)
-            .skip(eof())
+        attempt(token('.').skip(not_followed_by(alpha_num()))).map(|_| JsonPath::root()),
+        attempt(many1::<Vec<_>, _>(path_step_expr))
             .map(|v| JsonPath::new(v)),
-    ))
+    )).message("path_parser")
 }
 
 fn filter_parser<I>(max_text_length: usize) -> impl Parser<Input = I, Output = Filter>
@@ -60,6 +63,7 @@ where
                 })
             }),
         ))))
+        .message("array_filter_expr_internal")
         .map(|(num, maybe_rest)| {
             if let Some(array_filter) = maybe_rest {
                 match array_filter {
@@ -81,20 +85,23 @@ where
         });
 
     let array_filter_expr = between(token('['), token(']'), array_filter_expr_internal)
+        .message("array_filter_expr")
         .map(|array_filter| FilterPart::Array(array_filter));
 
-    let branch_filter_expr = token('.').with(
+    let branch_filter_expr = token('.').with(choice((
         string_expr(max_text_length)
-            .or(ident_expr(max_text_length))
-            .map(|branch_name| FilterPart::Branch(BranchFilter::TextMatch(branch_name)))
-            .or(regex_expr(max_text_length)
-                .map(|reg| FilterPart::Branch(BranchFilter::RegexMatch(reg)))),
-    );
+            .map(|branch_name| FilterPart::Branch(BranchFilter::TextMatch(branch_name))),
+        ident_expr(max_text_length)
+            .message("ident_expr")
+            .map(|branch_name| FilterPart::Branch(BranchFilter::TextMatch(branch_name))),
+        regex_expr(max_text_length)
+            .map(|reg| FilterPart::Branch(BranchFilter::RegexMatch(reg))),
+    ))).message("branch_filter_expr");
 
     let filter_part_expr = array_filter_expr.or(branch_filter_expr);
 
     let filter_expr = attempt(token('.').skip(eof()).map(|_| vec![]))
-        .or(many::<Vec<_>, _>(filter_part_expr).skip(eof()))
+        .or(many::<Vec<_>, _>(filter_part_expr))
         .map(|v| {
             if v.is_empty() {
                 Filter::All
@@ -109,7 +116,7 @@ where
         } else {
             Filter::Union(v)
         }
-    })
+    }).message("filter_parser")
 }
 
 fn stage_parser<I>(
@@ -136,7 +143,7 @@ pub fn parse_query<'a>(
     ));
 
     let (filter, stages) = parser
-        .easy_parse(query)
+        .easy_parse(State::new(query))
         .map(|(filter, _)| filter)
         .map_err(|err| format!("{}", err))
         .unwrap();

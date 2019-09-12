@@ -68,8 +68,9 @@ impl<'a> PipelineBuilder<'a> {
         let (filter, pipeline) =
             parse_query(self.0.max_text_length, output, &self.0.query).unwrap();
         let state = ParserState::new(pipeline, filter);
+        let state_finisher = state.clone();
 
-        Ok(skip_many(json_smart(state, self.0.max_text_length)).skip(eof()))
+        Ok(skip_many(json_smart(state, self.0.max_text_length)).skip(eof()).map(move |_| { state_finisher.finish().unwrap(); () }))
     }
 }
 
