@@ -9,16 +9,17 @@ use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
 use combine::parser::choice::choice;
 use combine::parser::repeat::sep_by;
 use combine::parser::sequence::between;
+use combine::parser::item::token;
 
 use crate::json_value::JsonValue;
-use crate::parse_basics::{keyword_lex, number_lex, string_lex, token_lex, NumberVal};
+use crate::parse_basics::{keyword_expr, number_expr, string_expr, string_lex, token_lex, lex, NumberVal};
 
 fn keep_number<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    number_lex().map(|n: NumberVal| n.into())
+    lex(number_expr().map(|n: NumberVal| n.into()))
 }
 
 fn keep_string<I>(max_length: usize) -> impl Parser<Input = I, Output = JsonValue>
@@ -26,7 +27,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    string_lex(max_length).map(|s: String| JsonValue::String(s))
+    lex(string_expr(max_length).map(|s: String| JsonValue::String(s)))
 }
 
 fn keep_keyword<I>() -> impl Parser<Input = I, Output = JsonValue>
@@ -34,11 +35,11 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let null_val = keyword_lex("null").map(|_| JsonValue::Null);
+    let null_val = lex(keyword_expr("null").map(|_| JsonValue::Null));
 
-    let true_val = keyword_lex("true").map(|_| JsonValue::Boolean(true));
+    let true_val = lex(keyword_expr("true").map(|_| JsonValue::Boolean(true)));
 
-    let false_val = keyword_lex("false").map(|_| JsonValue::Boolean(false));
+    let false_val = lex(keyword_expr("false").map(|_| JsonValue::Boolean(false)));
 
     choice((null_val, true_val, false_val))
 }
@@ -48,12 +49,12 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(
+    lex(between(
         token_lex('['),
-        token_lex(']'),
+        token(']'),
         sep_by::<Vec<JsonValue>, _, _>(keep_json(max_text_length), token_lex(',')),
     )
-    .map(|v| JsonValue::Array(v))
+    .map(|v| JsonValue::Array(v)))
 }
 
 parser! {
@@ -73,11 +74,11 @@ where
         .skip(token_lex(':'))
         .and(keep_json(max_text_length));
 
-    let expr = between(
+    let expr = lex(between(
         token_lex('{'),
-        token_lex('}'),
+        token('}'),
         sep_by::<Vec<(String, JsonValue)>, _, _>(field, token_lex(',')),
-    );
+    ));
 
     expr.map(|v| JsonValue::Object(HashMap::from_iter(v)))
 }

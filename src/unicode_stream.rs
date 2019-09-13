@@ -1,6 +1,6 @@
 use std::io::{BufReader, Bytes, Read};
 use std::iter::Iterator;
-use unicode_normalization::{Recompositions, UnicodeNormalization};
+use unicode_normalization::{Decompositions, UnicodeNormalization};
 use unicode_reader::CodePoints;
 
 use combine::error::UnexpectedParse;
@@ -19,8 +19,8 @@ impl<R: Read> ReadIterator<R> {
         ReadIterator::from_read(BufReader::new(input))
     }
 
-    pub fn from_read_buffered_normalized(input: R) -> Recompositions<ReadIterator<BufReader<R>>> {
-        ReadIterator::from_read_buffered(input).nfc()
+    pub fn from_read_buffered_normalized(input: R) -> Decompositions<ReadIterator<BufReader<R>>> {
+        ReadIterator::from_read_buffered(input).nfd()
     }
 }
 
@@ -44,7 +44,7 @@ impl<R: Read> Iterator for ReadIterator<R> {
 
 pub struct ReadStream<R: Read>(
     BufferedStream<
-        State<IteratorStream<Recompositions<ReadIterator<BufReader<R>>>>, SourcePosition>,
+        State<IteratorStream<Decompositions<ReadIterator<BufReader<R>>>>, SourcePosition>,
     >,
 );
 
