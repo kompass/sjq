@@ -199,7 +199,7 @@ impl MeanStage {
     pub fn new(output: Box<dyn Pipeline>, meaned_value: JsonPath, strict: bool) -> MeanStage {
         MeanStage {
             acc: Cell::new(0f64),
-            count: 0u64,
+            count: Cell::new(0u64),
             meaned_value,
             strict,
             output,
@@ -226,12 +226,12 @@ impl Pipeline for MeanStage {
     fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
         if let Some(item) = item.select(&self.meaned_value) {
             match item {
-                &JsonValue::Integer(i) => self.acc.set(self.acc + i as f64),
-                &JsonValue::Float(i) => self.acc.set(self.acc + i),
+                &JsonValue::Integer(i) => self.acc.set(self.acc.get() + i as f64),
+                &JsonValue::Float(i) => self.acc.set(self.acc.get() + i),
                 _ => return Err("Impossible to mean a non-number value.".to_string()),
             }
 
-            self.count.set(self.count + 1);
+            self.count.set(self.count.get() + 1);
 
             Ok(())
         } else if self.strict {
@@ -242,17 +242,19 @@ impl Pipeline for MeanStage {
     }
 
     fn finish(&mut self) -> Result<(), String> {
-        if self.count > 0 {
-            let mean = self.acc / self.count;
+        if self.count.get() > 0 {
+            let mean = self.acc.get() / self.count.get() as f64;
 
             self.output
-                .ingest(NumberVal::Float(mean))
+                .ingest(JsonValue::Float(mean))
                 .unwrap();
 
             self.output.finish().unwrap();
-            self.acc.set(0);
-            self.count.set(0);
+            self.acc.set(0.0f64);
+            self.count.set(0u64);
+        }
 
         Ok(())
+
     }
 }
