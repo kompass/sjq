@@ -183,3 +183,76 @@ impl Pipeline for SumStage {
         Ok(())
     }
 }
+
+pub struct MeanStage {
+    // `count` contains the `Option` information : if `count` == 0, then acc is None.
+    // When `acc` is none, its value is 0, so incrementation is like a value copy,
+    // and then the ingest don't have to test if acc is None before increment.
+    acc: Cell<f64>,
+    count: Cell<u64>,
+    meaned_value: JsonPath,
+    strict: bool,
+    output: Box<dyn Pipeline>,
+}
+
+impl MeanStage {
+    pub fn new(output: Box<dyn Pipeline>, meaned_value: JsonPath, strict: bool) -> MeanStage {
+        MeanStage {
+            acc: Cell::new(0f64),
+            count: 0u64,
+            meaned_value,
+            strict,
+            output,
+        }
+    }
+
+    pub fn from_args(
+        output: Box<dyn Pipeline>,
+        args: &[StageArg],
+    ) -> Result<Box<dyn Pipeline>, String> {
+        if args.len() != 1 {
+            Err("sum : Wrong number of arguments.".to_string())
+        } else {
+            if let StageArg::Path(ref path) = args.get(0).unwrap() {
+                Ok(Box::new(Self::new(output, path.clone(), false)))
+            } else {
+                Err("sum : Wrong type of arguments.".to_string())
+            }
+        }
+    }
+}
+
+impl Pipeline for MeanStage {
+    fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
+        if let Some(item) = item.select(&self.meaned_value) {
+            match item {
+                &JsonValue::Integer(i) => self.acc.set(self.acc + i as f64),
+                &JsonValue::Float(i) => self.acc.set(self.acc + i),
+                _ => return Err("Impossible to mean a non-number value.".to_string()),
+            }
+
+            self.count.set(self.count + 1);
+
+            Ok(())
+        } else if self.strict {
+            Err("Missing meaned value.".to_string())
+        } else {
+            Ok(())
+        }
+    }
+
+    fn finish(&mut self) -> Result<(), String> {
+        if self.count > 0 {
+            let mean = self.acc / self.count;
+
+            self.output
+                .ingest(NumberVal::Float(mean))
+                .unwrap();
+
+            self.output.finish().unwrap();
+            self.acc.set(0);
+            self.count.set(0);
+
+        Ok(())
+    }
+}
