@@ -2,22 +2,19 @@ use either::Either;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use combine::stream::Stream;
-use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
-
 use combine::parser::choice::choice;
 use combine::parser::combinator::factory;
 use combine::parser::repeat::sep_by;
 use combine::parser::sequence::between;
+use combine::stream::Stream;
+use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
 
 use crate::filter::Filter;
 use crate::json_path::JsonPath;
 use crate::json_value::JsonValue;
 use crate::parse_and_keep::keep_json;
-use crate::parse_and_throw::throw_json;
-use crate::parse_and_throw::{throw_keyword, throw_number, throw_string};
-use crate::parse_basics::lex;
-use crate::parse_basics::{string_lex, token_lex};
+use crate::parse_and_throw::{throw_json, throw_keyword, throw_number, throw_string};
+use crate::parse_basics::{lex, string_lex, token_lex};
 use crate::pipeline::Pipeline;
 
 struct InternalState {

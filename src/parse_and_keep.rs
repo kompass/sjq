@@ -2,14 +2,13 @@ use std::collections::HashMap;
 use std::iter::FromIterator;
 
 use combine::error::ParseError;
-use combine::parser::Parser;
-use combine::stream::Stream;
-use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
-
 use combine::parser::choice::choice;
 use combine::parser::item::token;
 use combine::parser::repeat::sep_by;
 use combine::parser::sequence::between;
+use combine::parser::Parser;
+use combine::stream::Stream;
+use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
 
 use crate::json_value::JsonValue;
 use crate::parse_basics::{

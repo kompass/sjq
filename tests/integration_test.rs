@@ -36,7 +36,6 @@ fn it_prints_usage_when_requested() {
         .stdout(predicate::str::contains("EXAMPLES :"));
 }
 
-// TODO: write output with NFC normalization
 #[test]
 fn it_parses_simple_stream() {
     let expected_output: Vec<Value> = vec![
@@ -63,13 +62,10 @@ fn it_parses_simple_stream() {
         .unwrap()
         .args(&["."])
         .with_stdin()
-        .buffer(" {\"abc\": 1}\n{\"arthur\"      :\"pomme\", \"1\":1   }\n{\"command_name\":\"achat groupé de pommes\",\"quantity\":123456780,\"commentary\":\"Mangez des pommes !\",\"detail\" :  { \"client\" :\"Jacques Chirac\", \"cash\":   true,\"random_numbers\": [1, 0, 0.1, -1, \"fake it's not a number]\"]}}")
+        .buffer(" {\"abc\": 1}\n{\"arthur\"      :\"pomme\", \"1\":1   }{\"command_name\":\"achat groupé de pommes\",\"quantity\":123456780,\"commentary\":\"Mangez des pommes !\",\"detail\" :  { \"client\" :\"Jacques Chirac\", \"cash\":   true,\"random_numbers\": [1, 0, 0.1, -1, \"fake it's not a number]\"]}}")
         .assert()
         .success()
         .stdout(predicate::function(|stdout: &str| {
-            let output = json_stream_from_str(stdout);
-            dbg!(&expected_output);
-            dbg!(&output);
-            output == expected_output
+            json_stream_from_str(stdout) == expected_output
         }));
 }
