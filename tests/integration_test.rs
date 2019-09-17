@@ -69,3 +69,24 @@ fn it_parses_simple_stream() {
             json_stream_from_str(stdout) == expected_output
         }));
 }
+
+#[test]
+fn it_accepts_pipes_in_query() {
+    let syntaxes = [
+        ".abc|mean .",
+        ".abc |mean .",
+        ".abc| mean .",
+        ".abc | mean .",
+    ];  
+
+    for syntax in syntaxes.iter() {
+        Command::cargo_bin(crate_name!())
+            .unwrap()
+            .args(&[syntax])
+            .with_stdin()
+            .buffer("{\"abc\": 1}{\"abc\": 2}{\"abc\": -1.1}{\"abc\": 1234}{\"abc\": -34.837}")
+            .assert()
+            .success()
+            .stdout("240.2126\n");
+    }
+}

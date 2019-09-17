@@ -97,7 +97,7 @@ where
 
     let filter_part_expr = array_filter_expr.or(branch_filter_expr);
 
-    let filter_expr = attempt(token('.').skip(eof()).map(|_| vec![]))
+    let filter_expr = attempt(token('.').skip(not_followed_by(alpha_num().or(token('"')).or(token('/')))).map(|_| vec![]))
         .or(many::<Vec<_>, _>(filter_part_expr))
         .map(|v| {
             if v.is_empty() {
@@ -137,9 +137,9 @@ pub fn parse_query<'a>(
     output: Box<dyn Pipeline>,
     query: &str,
 ) -> Result<(Filter, Box<dyn Pipeline + 'a>), String> {
-    let mut parser = filter_parser(max_text_length).and(many::<Vec<_>, _>(
+    let mut parser = lex(filter_parser(max_text_length)).and(many::<Vec<_>, _>(
         token_lex('|').with(stage_parser(max_text_length)),
-    ));
+    )).skip(eof());
 
     let (filter, stages) = parser
         .easy_parse(State::new(query))
