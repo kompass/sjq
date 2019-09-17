@@ -7,12 +7,14 @@ use combine::stream::Stream;
 use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
 
 use combine::parser::choice::choice;
+use combine::parser::item::token;
 use combine::parser::repeat::sep_by;
 use combine::parser::sequence::between;
-use combine::parser::item::token;
 
 use crate::json_value::JsonValue;
-use crate::parse_basics::{keyword_expr, number_expr, string_expr, string_lex, token_lex, lex, NumberVal};
+use crate::parse_basics::{
+    keyword_expr, lex, number_expr, string_expr, string_lex, token_lex, NumberVal,
+};
 
 fn keep_number<I>() -> impl Parser<Input = I, Output = JsonValue>
 where

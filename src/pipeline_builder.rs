@@ -4,6 +4,7 @@ use std::io::stdout;
 use std::io::{stdin, Stdin};
 
 use combine::error::ParseError;
+use combine::parser::char::spaces;
 use combine::parser::item::eof;
 use combine::parser::repeat::skip_many;
 use combine::parser::Parser;
@@ -70,7 +71,12 @@ impl<'a> PipelineBuilder<'a> {
         let state = ParserState::new(pipeline, filter);
         let state_finisher = state.clone();
 
-        Ok(skip_many(json_smart(state, self.0.max_text_length)).skip(eof()).map(move |_| { state_finisher.finish().unwrap(); () }))
+        Ok(spaces()
+            .with(skip_many(json_smart(state, self.0.max_text_length)).skip(eof()))
+            .map(move |_| {
+                state_finisher.finish().unwrap();
+                ()
+            }))
     }
 }
 

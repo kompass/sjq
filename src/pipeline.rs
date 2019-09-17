@@ -211,12 +211,12 @@ impl MeanStage {
         args: &[StageArg],
     ) -> Result<Box<dyn Pipeline>, String> {
         if args.len() != 1 {
-            Err("sum : Wrong number of arguments.".to_string())
+            Err("mean : Wrong number of arguments.".to_string())
         } else {
             if let StageArg::Path(ref path) = args.get(0).unwrap() {
                 Ok(Box::new(Self::new(output, path.clone(), false)))
             } else {
-                Err("sum : Wrong type of arguments.".to_string())
+                Err("mean : Wrong type of arguments.".to_string())
             }
         }
     }
@@ -245,9 +245,7 @@ impl Pipeline for MeanStage {
         if self.count.get() > 0 {
             let mean = self.acc.get() / self.count.get() as f64;
 
-            self.output
-                .ingest(JsonValue::Float(mean))
-                .unwrap();
+            self.output.ingest(JsonValue::Float(mean)).unwrap();
 
             self.output.finish().unwrap();
             self.acc.set(0.0f64);
@@ -255,6 +253,5 @@ impl Pipeline for MeanStage {
         }
 
         Ok(())
-
     }
 }

@@ -1,9 +1,11 @@
 use std::ops::Range;
 
+use combine::char::alpha_num;
 use combine::error::ParseError;
 use combine::parser::choice::choice;
 use combine::parser::choice::optional;
 use combine::parser::combinator::attempt;
+use combine::parser::combinator::not_followed_by;
 use combine::parser::item::eof;
 use combine::parser::item::token;
 use combine::parser::repeat::many;
@@ -11,10 +13,8 @@ use combine::parser::repeat::many1;
 use combine::parser::repeat::sep_by1;
 use combine::parser::sequence::between;
 use combine::parser::Parser;
-use combine::stream::Stream;
 use combine::stream::state::State;
-use combine::parser::combinator::not_followed_by;
-use combine::char::alpha_num;
+use combine::stream::Stream;
 
 use crate::filter::*;
 use crate::json_path::{JsonPath, JsonPathStep};
@@ -43,9 +43,9 @@ where
 
     choice((
         attempt(token('.').skip(not_followed_by(alpha_num()))).map(|_| JsonPath::root()),
-        attempt(many1::<Vec<_>, _>(path_step_expr))
-            .map(|v| JsonPath::new(v)),
-    )).message("path_parser")
+        attempt(many1::<Vec<_>, _>(path_step_expr)).map(|v| JsonPath::new(v)),
+    ))
+    .message("path_parser")
 }
 
 fn filter_parser<I>(max_text_length: usize) -> impl Parser<Input = I, Output = Filter>
@@ -88,15 +88,17 @@ where
         .message("array_filter_expr")
         .map(|array_filter| FilterPart::Array(array_filter));
 
-    let branch_filter_expr = token('.').with(choice((
-        string_expr(max_text_length)
-            .map(|branch_name| FilterPart::Branch(BranchFilter::TextMatch(branch_name))),
-        ident_expr(max_text_length)
-            .message("ident_expr")
-            .map(|branch_name| FilterPart::Branch(BranchFilter::TextMatch(branch_name))),
-        regex_expr(max_text_length)
-            .map(|reg| FilterPart::Branch(BranchFilter::RegexMatch(reg))),
-    ))).message("branch_filter_expr");
+    let branch_filter_expr = token('.')
+        .with(choice((
+            string_expr(max_text_length)
+                .map(|branch_name| FilterPart::Branch(BranchFilter::TextMatch(branch_name))),
+            ident_expr(max_text_length)
+                .message("ident_expr")
+                .map(|branch_name| FilterPart::Branch(BranchFilter::TextMatch(branch_name))),
+            regex_expr(max_text_length)
+                .map(|reg| FilterPart::Branch(BranchFilter::RegexMatch(reg))),
+        )))
+        .message("branch_filter_expr");
 
     let filter_part_expr = array_filter_expr.or(branch_filter_expr);
 
@@ -110,13 +112,15 @@ where
             }
         });
 
-    sep_by1::<Vec<_>, _, _>(filter_expr, token_lex(',')).map(|mut v| {
-        if v.len() == 1 {
-            v.pop().unwrap()
-        } else {
-            Filter::Union(v)
-        }
-    }).message("filter_parser")
+    sep_by1::<Vec<_>, _, _>(filter_expr, token_lex(','))
+        .map(|mut v| {
+            if v.len() == 1 {
+                v.pop().unwrap()
+            } else {
+                Filter::Union(v)
+            }
+        })
+        .message("filter_parser")
 }
 
 fn stage_parser<I>(
@@ -153,6 +157,7 @@ pub fn parse_query<'a>(
     for (stage_ident, args) in stages.iter().rev() {
         pipeline = match stage_ident.as_str() {
             "add_field" => AddFieldStage::from_args(pipeline, &args),
+            "mean" => MeanStage::from_args(pipeline, &args),
             "sum" => SumStage::from_args(pipeline, &args),
             &_ => Err("Unknown stage name.".to_string()),
         }
