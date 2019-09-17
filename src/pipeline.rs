@@ -87,7 +87,7 @@ impl AddFieldStage {
                 Ok(Box::new(Self::new(
                     output,
                     &key,
-                    JsonValue::String(value.clone()),
+                    JsonValue::normalized_string(&value),
                 )))
             } else {
                 Err("add_field : Wrong type of arguments.".to_string())

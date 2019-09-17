@@ -56,7 +56,7 @@ fn it_parses_simple_stream() {
                 "cash": true,
                 "random_numbers": [1, 0, 0.1, -1, "fake it's not a number]"]
             }
-        })
+        }),
     ];
 
     Command::cargo_bin(crate_name!())

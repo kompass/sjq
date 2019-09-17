@@ -16,6 +16,7 @@ use crate::json_value::JsonValue;
 use crate::parse_and_keep::keep_json;
 use crate::parse_and_throw::throw_json;
 use crate::parse_and_throw::{throw_keyword, throw_number, throw_string};
+use crate::parse_basics::lex;
 use crate::parse_basics::{string_lex, token_lex};
 use crate::pipeline::Pipeline;
 
@@ -115,7 +116,7 @@ parser! {
     fn keep_json_smart[I](state: ParserState, max_text_length: usize)(I) -> ()
     where [I: Stream<Item = char>]
     {
-        keep_json(*max_text_length).map(move |v| { state.ingest(v).unwrap(); })
+        lex(keep_json(*max_text_length).map(move |v| { state.ingest(v).unwrap(); }))
     }
 }
 

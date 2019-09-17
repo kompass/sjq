@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::collections::HashMap;
+use unicode_normalization::UnicodeNormalization;
 
 use crate::json_path::{JsonPath, JsonPathStep};
 
@@ -17,6 +18,9 @@ pub enum JsonValue {
 }
 
 impl JsonValue {
+    pub fn normalized_string(s: &str) -> JsonValue {
+        JsonValue::String(s.nfc().collect())
+    }
     pub fn select<'a>(&'a self, path: &JsonPath) -> Option<&'a JsonValue> {
         let mut selected = self;
 

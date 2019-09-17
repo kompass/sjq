@@ -21,7 +21,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    lex(number_expr().map(|n: NumberVal| n.into()))
+    number_expr().map(|n: NumberVal| n.into())
 }
 
 fn keep_string<I>(max_length: usize) -> impl Parser<Input = I, Output = JsonValue>
@@ -29,7 +29,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    lex(string_expr(max_length).map(|s: String| JsonValue::String(s)))
+    string_expr(max_length).map(|s: String| JsonValue::normalized_string(&s))
 }
 
 fn keep_keyword<I>() -> impl Parser<Input = I, Output = JsonValue>
@@ -37,11 +37,11 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let null_val = lex(keyword_expr("null").map(|_| JsonValue::Null));
+    let null_val = keyword_expr("null").map(|_| JsonValue::Null);
 
-    let true_val = lex(keyword_expr("true").map(|_| JsonValue::Boolean(true)));
+    let true_val = keyword_expr("true").map(|_| JsonValue::Boolean(true));
 
-    let false_val = lex(keyword_expr("false").map(|_| JsonValue::Boolean(false)));
+    let false_val = keyword_expr("false").map(|_| JsonValue::Boolean(false));
 
     choice((null_val, true_val, false_val))
 }
@@ -51,12 +51,12 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    lex(between(
+    between(
         token_lex('['),
         token(']'),
-        sep_by::<Vec<JsonValue>, _, _>(keep_json(max_text_length), token_lex(',')),
+        sep_by::<Vec<JsonValue>, _, _>(lex(keep_json(max_text_length)), token_lex(',')),
     )
-    .map(|v| JsonValue::Array(v)))
+    .map(|v| JsonValue::Array(v))
 }
 
 parser! {
@@ -74,13 +74,13 @@ where
 {
     let field = string_lex(max_text_length)
         .skip(token_lex(':'))
-        .and(keep_json(max_text_length));
+        .and(lex(keep_json(max_text_length)));
 
-    let expr = lex(between(
+    let expr = between(
         token_lex('{'),
         token('}'),
         sep_by::<Vec<(String, JsonValue)>, _, _>(field, token_lex(',')),
-    ));
+    );
 
     expr.map(|v| JsonValue::Object(HashMap::from_iter(v)))
 }
