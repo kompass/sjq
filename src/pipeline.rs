@@ -246,11 +246,56 @@ impl Pipeline for MeanStage {
             let mean = self.acc.get() / self.count.get() as f64;
 
             self.output.ingest(JsonValue::Float(mean)).unwrap();
-
-            self.output.finish().unwrap();
-            self.acc.set(0.0f64);
-            self.count.set(0u64);
         }
+
+        self.output.finish().unwrap();
+        self.acc.set(0.0f64);
+        self.count.set(0u64);
+
+        Ok(())
+    }
+}
+
+pub struct SelectStage {
+    selected_value: JsonPath,
+    output: Box<dyn Pipeline>,
+}
+
+impl SelectStage {
+    pub fn new(output: Box<dyn Pipeline>, selected_value: JsonPath) -> SelectStage {
+        SelectStage {
+            selected_value,
+            output,
+        }
+    }
+
+    pub fn from_args(
+        output: Box<dyn Pipeline>,
+        args: &[StageArg],
+    ) -> Result<Box<dyn Pipeline>, String> {
+        if args.len() != 1 {
+            Err("select : Wrong number of arguments.".to_string())
+        } else {
+            if let StageArg::Path(ref path) = args.get(0).unwrap() {
+                Ok(Box::new(Self::new(output, path.clone())))
+            } else {
+                Err("select : Wrong type of arguments.".to_string())
+            }
+        }
+    }
+}
+
+impl Pipeline for SelectStage {
+    fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
+        if let Some(item) = item.select(&self.selected_value) {
+            self.output.ingest(item.clone())
+        } else {
+            Ok(())
+        }
+    }
+
+    fn finish(&mut self) -> Result<(), String> {
+        self.output.finish().unwrap();
 
         Ok(())
     }

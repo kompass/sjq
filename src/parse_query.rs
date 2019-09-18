@@ -154,6 +154,7 @@ pub fn parse_query<'a>(
             "add_field" => AddFieldStage::from_args(pipeline, &args),
             "mean" => MeanStage::from_args(pipeline, &args),
             "sum" => SumStage::from_args(pipeline, &args),
+            "select" => SelectStage::from_args(pipeline, &args),
             &_ => Err("Unknown stage name.".to_string()),
         }
         .unwrap();
