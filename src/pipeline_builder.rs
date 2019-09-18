@@ -40,6 +40,7 @@ impl<'a> PipelineBuilder<'a> {
             let output_writer = OpenOptions::new()
                 .write(true)
                 .append(self.0.append)
+                .create(true)
                 .create_new(self.0.force_new)
                 .open(filename)
                 .unwrap();

@@ -3,6 +3,7 @@ use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use serde_json::{json, Value};
 use std::process::Command;
+use assert_fs::prelude::*;
 
 fn json_stream_from_str(s: &str) -> Vec<Value> {
     let mut acc: Vec<Value> = Vec::new();
@@ -101,4 +102,23 @@ fn it_selects_correct_field_on_pipelined_stream() {
         .assert()
         .success()
         .stdout("240.2126\n");
+}
+
+#[test]
+fn it_outputs_in_file_when_requested() {
+    let temp_dir = assert_fs::TempDir::new().unwrap();
+    let output_file = temp_dir.child("temp-output.json");
+
+    Command::cargo_bin(crate_name!())
+        .unwrap()
+        .args(&["--output", output_file.path().to_str().unwrap(), "."])
+        .with_stdin()
+        .buffer("{\"test\": true}")
+        .assert()
+        .success();
+
+    output_file.assert(predicate::path::is_file());
+    output_file.assert("{\"test\":true}\n");
+
+    temp_dir.close().unwrap();
 }
