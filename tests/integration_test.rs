@@ -90,3 +90,15 @@ fn it_accepts_pipes_in_query() {
             .stdout("240.2126\n");
     }
 }
+
+#[test]
+fn it_selects_correct_field_on_pipelined_stream() {
+    Command::cargo_bin(crate_name!())
+        .unwrap()
+        .args(&[". | mean .a.b"])
+        .with_stdin()
+        .buffer("{\"a\": {\"b\": 1, \"a\": 10000}}{\"b\": -10000, \"a\": {\"b\": -1.1}}{\"a\": {\"b\": 1234}}{\"a\": {\"b\": 2}}{\"a\": {\"b\": -34.837}}")
+        .assert()
+        .success()
+        .stdout("240.2126\n");
+}
