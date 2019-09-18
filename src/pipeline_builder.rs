@@ -39,6 +39,7 @@ impl<'a> PipelineBuilder<'a> {
         if let Some(ref filename) = self.0.output {
             let output_writer = OpenOptions::new()
                 .write(true)
+                .truncate(!self.0.append)
                 .append(self.0.append)
                 .create(true)
                 .create_new(self.0.force_new)

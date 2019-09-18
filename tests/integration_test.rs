@@ -105,7 +105,7 @@ fn it_selects_correct_field_on_pipelined_stream() {
 }
 
 #[test]
-fn it_outputs_in_file_when_requested() {
+fn it_outputs_in_new_file_when_requested() {
     let temp_dir = assert_fs::TempDir::new().unwrap();
     let output_file = temp_dir.child("temp-output.json");
 
@@ -119,6 +119,66 @@ fn it_outputs_in_file_when_requested() {
 
     output_file.assert(predicate::path::is_file());
     output_file.assert("{\"test\":true}\n");
+
+    temp_dir.close().unwrap();
+}
+
+#[test]
+fn it_overwrites_file_when_requested() {
+    let temp_dir = assert_fs::TempDir::new().unwrap();
+    let output_file = temp_dir.child("temp-output.json");
+
+    output_file.write_str("This sentence has to be overwrited.").unwrap();
+
+    Command::cargo_bin(crate_name!())
+        .unwrap()
+        .args(&["--output", output_file.path().to_str().unwrap(), "."])
+        .with_stdin()
+        .buffer("{\"test\": true}")
+        .assert()
+        .success();
+
+    output_file.assert(predicate::path::is_file());
+    output_file.assert("{\"test\":true}\n");
+
+    temp_dir.close().unwrap();
+}
+
+#[test]
+fn it_appends_file_when_requested() {
+    let temp_dir = assert_fs::TempDir::new().unwrap();
+    let output_file = temp_dir.child("temp-output.json");
+
+    output_file.write_str("This sentence has to stay.").unwrap();
+
+    Command::cargo_bin(crate_name!())
+        .unwrap()
+        .args(&["--output", output_file.path().to_str().unwrap(), "--append", "."])
+        .with_stdin()
+        .buffer("{\"test\": true}")
+        .assert()
+        .success();
+
+    output_file.assert(predicate::path::is_file());
+    output_file.assert("This sentence has to stay.{\"test\":true}\n");
+
+    temp_dir.close().unwrap();
+}
+
+#[test]
+fn it_refuses_to_write_to_existing_file_when_requested() {
+    let temp_dir = assert_fs::TempDir::new().unwrap();
+    let output_file = temp_dir.child("temp-output.json");
+
+    output_file.touch().unwrap();
+
+    Command::cargo_bin(crate_name!())
+        .unwrap()
+        .args(&["--output", output_file.path().to_str().unwrap(), "--force-new", "."])
+        .with_stdin()
+        .buffer("{\"test\": true}")
+        .assert()
+        .failure();
 
     temp_dir.close().unwrap();
 }

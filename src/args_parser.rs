@@ -28,7 +28,7 @@ pub struct ArgStruct {
     #[structopt(short, long, value_name = "FILE")]
     pub output: Option<String>,
 
-    /// If output filename specified, appends instead of overwriting previous content
+    /// If output filename specified, appends instead of erasing previous content and overwriting
     #[structopt(short, long, requires = "output")]
     pub append: bool,
 
