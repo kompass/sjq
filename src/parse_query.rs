@@ -13,9 +13,10 @@ use combine::stream::Stream;
 
 use crate::filter::*;
 use crate::json_path::{JsonPath, JsonPathStep};
+use crate::json_value::NumberVal;
 use crate::parse_basics::{
     ident_expr, ident_lex, index_expr, lex, number_lex, regex_expr, string_expr, string_lex,
-    token_lex, NumberVal,
+    token_lex,
 };
 use crate::pipeline::*;
 use crate::pipeline_builder::StageArg;
@@ -97,15 +98,19 @@ where
 
     let filter_part_expr = array_filter_expr.or(branch_filter_expr);
 
-    let filter_expr = attempt(token('.').skip(not_followed_by(alpha_num().or(token('"')).or(token('/')))).map(|_| vec![]))
-        .or(many::<Vec<_>, _>(filter_part_expr))
-        .map(|v| {
-            if v.is_empty() {
-                Filter::All
-            } else {
-                Filter::Parts(v)
-            }
-        });
+    let filter_expr = attempt(
+        token('.')
+            .skip(not_followed_by(alpha_num().or(token('"')).or(token('/'))))
+            .map(|_| vec![]),
+    )
+    .or(many::<Vec<_>, _>(filter_part_expr))
+    .map(|v| {
+        if v.is_empty() {
+            Filter::All
+        } else {
+            Filter::Parts(v)
+        }
+    });
 
     sep_by1::<Vec<_>, _, _>(filter_expr, token_lex(','))
         .map(|mut v| {
@@ -137,9 +142,11 @@ pub fn parse_query<'a>(
     output: Box<dyn Pipeline>,
     query: &str,
 ) -> Result<(Filter, Box<dyn Pipeline + 'a>), String> {
-    let mut parser = lex(filter_parser(max_text_length)).and(many::<Vec<_>, _>(
-        token_lex('|').with(stage_parser(max_text_length)),
-    )).skip(eof());
+    let mut parser = lex(filter_parser(max_text_length))
+        .and(many::<Vec<_>, _>(
+            token_lex('|').with(stage_parser(max_text_length)),
+        ))
+        .skip(eof());
 
     let (filter, stages) = parser
         .easy_parse(State::new(query))

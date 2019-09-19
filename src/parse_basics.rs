@@ -1,7 +1,6 @@
 use lexical;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::convert::TryFrom;
 
 use combine::error::ParseError;
 use combine::parser::char::{alpha_num, digit, letter, spaces, string};
@@ -14,6 +13,7 @@ use combine::parser::Parser;
 use combine::stream::{Stream, StreamOnce};
 
 use crate::json_value::JsonValue;
+use crate::json_value::NumberVal;
 
 macro_rules! number_length_base_10 {
     ($n:expr) => {
@@ -47,33 +47,6 @@ where
     let expr = count_min_max::<String, _>(1, *&*INTEGER_PART_MAX_LENGTH, digit());
 
     expr.map(|s: String| lexical::try_parse(&s).unwrap())
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum NumberVal {
-    Integer(i64),
-    Float(f64),
-}
-
-impl Into<JsonValue> for NumberVal {
-    fn into(self) -> JsonValue {
-        match self {
-            NumberVal::Integer(i) => JsonValue::Integer(i),
-            NumberVal::Float(f) => JsonValue::Float(f),
-        }
-    }
-}
-
-impl TryFrom<&JsonValue> for NumberVal {
-    type Error = String;
-
-    fn try_from(val: &JsonValue) -> Result<NumberVal, Self::Error> {
-        match val {
-            JsonValue::Integer(i) => Ok(NumberVal::Integer(*i)),
-            JsonValue::Float(f) => Ok(NumberVal::Float(*f)),
-            _ => Err("Impossible to convert a non-number json value to a number.".to_string()),
-        }
-    }
 }
 
 pub fn number_expr<I>() -> impl Parser<Input = I, Output = NumberVal>

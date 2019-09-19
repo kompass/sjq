@@ -1,9 +1,9 @@
 use assert_cmd::crate_name;
 use assert_cmd::prelude::*;
+use assert_fs::prelude::*;
 use predicates::prelude::*;
 use serde_json::{json, Value};
 use std::process::Command;
-use assert_fs::prelude::*;
 
 fn json_stream_from_str(s: &str) -> Vec<Value> {
     let mut acc: Vec<Value> = Vec::new();
@@ -78,7 +78,7 @@ fn it_accepts_pipes_in_query() {
         ".abc |mean .",
         ".abc| mean .",
         ".abc | mean .",
-    ];  
+    ];
 
     for syntax in syntaxes.iter() {
         Command::cargo_bin(crate_name!())
@@ -128,7 +128,9 @@ fn it_overwrites_file_when_requested() {
     let temp_dir = assert_fs::TempDir::new().unwrap();
     let output_file = temp_dir.child("temp-output.json");
 
-    output_file.write_str("This sentence has to be overwrited.").unwrap();
+    output_file
+        .write_str("This sentence has to be overwrited.")
+        .unwrap();
 
     Command::cargo_bin(crate_name!())
         .unwrap()
@@ -153,7 +155,12 @@ fn it_appends_file_when_requested() {
 
     Command::cargo_bin(crate_name!())
         .unwrap()
-        .args(&["--output", output_file.path().to_str().unwrap(), "--append", "."])
+        .args(&[
+            "--output",
+            output_file.path().to_str().unwrap(),
+            "--append",
+            ".",
+        ])
         .with_stdin()
         .buffer("{\"test\": true}")
         .assert()
@@ -174,7 +181,12 @@ fn it_refuses_to_write_to_existing_file_when_requested() {
 
     Command::cargo_bin(crate_name!())
         .unwrap()
-        .args(&["--output", output_file.path().to_str().unwrap(), "--force-new", "."])
+        .args(&[
+            "--output",
+            output_file.path().to_str().unwrap(),
+            "--force-new",
+            ".",
+        ])
         .with_stdin()
         .buffer("{\"test\": true}")
         .assert()

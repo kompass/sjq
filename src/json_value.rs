@@ -4,14 +4,20 @@ use unicode_normalization::UnicodeNormalization;
 
 use crate::json_path::{JsonPath, JsonPathStep};
 
+#[derive(Serialize, Debug, Clone, Copy, PartialEq)]
+#[serde(untagged)]
+pub enum NumberVal {
+    Integer(i64),
+    Float(f64),
+}
+
 /// Represents any possible value of a JSON document.
 #[derive(Serialize, Debug, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum JsonValue {
     Null,
     String(String),
-    Integer(i64),
-    Float(f64),
+    Number(NumberVal),
     Boolean(bool),
     Object(HashMap<String, JsonValue>),
     Array(Vec<JsonValue>),
@@ -21,6 +27,7 @@ impl JsonValue {
     pub fn normalized_string(s: &str) -> JsonValue {
         JsonValue::String(s.nfc().collect())
     }
+
     pub fn select<'a>(&'a self, path: &JsonPath) -> Option<&'a JsonValue> {
         let mut selected = self;
 

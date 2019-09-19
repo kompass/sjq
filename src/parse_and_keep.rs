@@ -10,17 +10,15 @@ use combine::parser::Parser;
 use combine::stream::Stream;
 use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
 
-use crate::json_value::JsonValue;
-use crate::parse_basics::{
-    keyword_expr, lex, number_expr, string_expr, string_lex, token_lex, NumberVal,
-};
+use crate::json_value::{JsonValue, NumberVal};
+use crate::parse_basics::{keyword_expr, lex, number_expr, string_expr, string_lex, token_lex};
 
 fn keep_number<I>() -> impl Parser<Input = I, Output = JsonValue>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    number_expr().map(|n: NumberVal| n.into())
+    number_expr().map(|n: NumberVal| JsonValue::Number(n))
 }
 
 fn keep_string<I>(max_length: usize) -> impl Parser<Input = I, Output = JsonValue>
@@ -131,7 +129,10 @@ mod tests {
                     "pomme".to_string(),
                     JsonValue::Object(
                         [
-                            ("taille".to_string(), JsonValue::Integer(12345)),
+                            (
+                                "taille".to_string(),
+                                JsonValue::Number(NumberVal::Integer(12345)),
+                            ),
                             (
                                 "couleur".to_string(),
                                 JsonValue::String("jaune".to_string()),
@@ -145,9 +146,9 @@ mod tests {
                 (
                     "random_array".to_string(),
                     JsonValue::Array(vec![
-                        JsonValue::Integer(1),
-                        JsonValue::Integer(2),
-                        JsonValue::Integer(3),
+                        JsonValue::Number(NumberVal::Integer(1)),
+                        JsonValue::Number(NumberVal::Integer(2)),
+                        JsonValue::Number(NumberVal::Integer(3)),
                         JsonValue::String("word".to_string()),
                     ]),
                 ),

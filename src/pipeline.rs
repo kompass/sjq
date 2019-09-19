@@ -3,8 +3,7 @@ use std::convert::TryFrom;
 use std::io::Write;
 
 use crate::json_path::JsonPath;
-use crate::json_value::JsonValue;
-use crate::parse_basics::NumberVal;
+use crate::json_value::{JsonValue, NumberVal};
 use crate::pipeline_builder::StageArg;
 
 pub trait Pipeline {
@@ -148,21 +147,24 @@ impl SumStage {
 impl Pipeline for SumStage {
     fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
         if let Some(item) = item.select(&self.summed_value) {
-            match (self.acc.get(), item) {
-                (None, item) => self.acc.set(Some(NumberVal::try_from(item).unwrap())),
-                (Some(NumberVal::Integer(acc)), &JsonValue::Integer(i)) => {
-                    self.acc.set(Some(NumberVal::Integer(acc + i)))
+            if let JsonValue::Number(item_val) = item {
+                match (self.acc.get(), item_val) {
+                    (None, item_val) => self.acc.set(Some(*item_val)),
+                    (Some(NumberVal::Integer(acc)), &NumberVal::Integer(i)) => {
+                        self.acc.set(Some(NumberVal::Integer(acc + i)))
+                    }
+                    (Some(NumberVal::Float(acc)), &NumberVal::Float(f)) => {
+                        self.acc.set(Some(NumberVal::Float(acc + f)))
+                    }
+                    (Some(NumberVal::Integer(acc)), &NumberVal::Float(f)) => {
+                        self.acc.set(Some(NumberVal::Float((acc as f64) + f)))
+                    }
+                    (Some(NumberVal::Float(acc)), &NumberVal::Integer(i)) => {
+                        self.acc.set(Some(NumberVal::Float(acc + (i as f64))))
+                    }
                 }
-                (Some(NumberVal::Float(acc)), &JsonValue::Float(f)) => {
-                    self.acc.set(Some(NumberVal::Float(acc + f)))
-                }
-                (Some(NumberVal::Integer(acc)), &JsonValue::Float(f)) => {
-                    self.acc.set(Some(NumberVal::Float((acc as f64) + f)))
-                }
-                (Some(NumberVal::Float(acc)), &JsonValue::Integer(i)) => {
-                    self.acc.set(Some(NumberVal::Float(acc + (i as f64))))
-                }
-                _ => return Err("Impossible to sum a non-number value.".to_string()),
+            } else {
+                return Err("Impossible to sum a non-number value.".to_string());
             }
 
             Ok(())
@@ -175,7 +177,9 @@ impl Pipeline for SumStage {
 
     fn finish(&mut self) -> Result<(), String> {
         self.output
-            .ingest(self.acc.get().unwrap_or(NumberVal::Integer(0)).into())
+            .ingest(JsonValue::Number(
+                self.acc.get().unwrap_or(NumberVal::Integer(0)),
+            ))
             .unwrap();
         self.output.finish().unwrap();
         self.acc.replace(None);
@@ -225,10 +229,13 @@ impl MeanStage {
 impl Pipeline for MeanStage {
     fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
         if let Some(item) = item.select(&self.meaned_value) {
-            match item {
-                &JsonValue::Integer(i) => self.acc.set(self.acc.get() + i as f64),
-                &JsonValue::Float(i) => self.acc.set(self.acc.get() + i),
-                _ => return Err("Impossible to mean a non-number value.".to_string()),
+            if let JsonValue::Number(item_val) = item {
+                match item_val {
+                    &NumberVal::Integer(i) => self.acc.set(self.acc.get() + i as f64),
+                    &NumberVal::Float(i) => self.acc.set(self.acc.get() + i),
+                }
+            } else {
+                return Err("Impossible to mean a non-number value.".to_string());
             }
 
             self.count.set(self.count.get() + 1);
@@ -245,7 +252,9 @@ impl Pipeline for MeanStage {
         if self.count.get() > 0 {
             let mean = self.acc.get() / self.count.get() as f64;
 
-            self.output.ingest(JsonValue::Float(mean)).unwrap();
+            self.output
+                .ingest(JsonValue::Number(NumberVal::Float(mean)))
+                .unwrap();
         }
 
         self.output.finish().unwrap();

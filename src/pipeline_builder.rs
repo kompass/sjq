@@ -12,7 +12,7 @@ use combine::stream::Stream;
 
 use crate::args_parser::ArgStruct;
 use crate::json_path::JsonPath;
-use crate::parse_basics::NumberVal;
+use crate::json_value::NumberVal;
 use crate::parse_query::parse_query;
 use crate::parse_smart::{json_smart, ParserState};
 use crate::pipeline::Pipeline;
