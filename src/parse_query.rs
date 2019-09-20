@@ -152,8 +152,7 @@ pub fn parse_query<'a>(
     let (filter, stages) = parser
         .easy_parse(State::new(query))
         .map(|(filter, _)| filter)
-        .map_err(|err| format!("{}", err))
-        .unwrap();
+        .map_err(|err| InitError::WrongQuerySyntax{position: err.position.column})?;
 
     let mut pipeline = output;
 

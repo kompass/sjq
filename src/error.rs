@@ -1,4 +1,4 @@
-use failure::{Error, Fail};
+use failure::Fail;
 
 #[derive(Debug, Fail)]
 pub enum InitError {
@@ -8,6 +8,6 @@ pub enum InitError {
     },
     #[fail(display = "syntax error in the query at position {}", position)]
     WrongQuerySyntax {
-        position: usize,
+        position: i32,
     }
 }
