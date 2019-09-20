@@ -1,5 +1,4 @@
 use std::cell::Cell;
-use std::convert::TryFrom;
 use std::io::Write;
 
 use crate::json_path::JsonPath;

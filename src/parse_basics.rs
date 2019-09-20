@@ -12,7 +12,6 @@ use combine::parser::sequence::between;
 use combine::parser::Parser;
 use combine::stream::{Stream, StreamOnce};
 
-use crate::json_value::JsonValue;
 use crate::json_value::NumberVal;
 
 macro_rules! number_length_base_10 {
