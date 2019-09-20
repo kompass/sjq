@@ -23,7 +23,7 @@ macro_rules! number_length_base_10 {
 // TODO : when these arithmetics will be const-compatible, use consts instead of once_cell::Lazy
 
 // The four next consts are not the real max lengths of a valid number.
-// They are there to make sure that the buffer is of sufficient size in each of the worst cases, but a valid number can't be as big.
+// They are there to make sure that the buffer is of sufficient size in each of the worst cases, but a valid number can't be that big.
 // The converter will check itself if the numbers are not too big.
 static INTEGER_PART_MAX_LENGTH: Lazy<usize> = Lazy::new(|| {
     std::cmp::max(
