@@ -92,3 +92,20 @@ impl JsonPath {
         self.0.len()
     }
 }
+
+impl std::fmt::Display for JsonPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0.first().map_or(true, |first| first.is_index()) {
+            write!(f, ".")?;
+        }
+
+        for step in &self.0 {
+            match step {
+                JsonPathStep::Field(node_name) => write!(f, ".\"{}\"", node_name)?,
+                JsonPathStep::Index(index) => write!(f, "[{}]", index)?
+            }
+        }
+
+        Ok(())
+    }
+}
