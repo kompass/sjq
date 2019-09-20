@@ -11,6 +11,7 @@ use combine::parser::Parser;
 use combine::stream::state::State;
 use combine::stream::Stream;
 
+use crate::error::InitError;
 use crate::filter::*;
 use crate::json_path::{JsonPath, JsonPathStep};
 use crate::json_value::NumberVal;
@@ -141,7 +142,7 @@ pub fn parse_query<'a>(
     max_text_length: usize,
     output: Box<dyn Pipeline>,
     query: &str,
-) -> Result<(Filter, Box<dyn Pipeline + 'a>), String> {
+) -> Result<(Filter, Box<dyn Pipeline + 'a>), InitError> {
     let mut parser = lex(filter_parser(max_text_length))
         .and(many::<Vec<_>, _>(
             token_lex('|').with(stage_parser(max_text_length)),
