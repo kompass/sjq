@@ -11,6 +11,7 @@ use combine::parser::Parser;
 use combine::stream::Stream;
 
 use crate::args_parser::ArgStruct;
+use crate::error::InitError;
 use crate::json_path::JsonPath;
 use crate::json_value::NumberVal;
 use crate::parse_query::parse_query;
@@ -28,14 +29,14 @@ pub enum StageArg {
 }
 
 impl<'a> PipelineBuilder<'a> {
-    pub fn build_input_stream(&self) -> Result<ReadStream<Stdin>, String> {
+    pub fn build_input_stream(&self) -> Result<ReadStream<Stdin>, InitError> {
         Ok(ReadStream::from_read_buffered_normalized(
             stdin(),
             self.0.max_text_length,
         ))
     }
 
-    fn build_output(&self) -> Result<Box<dyn Pipeline>, String> {
+    fn build_output(&self) -> Result<Box<dyn Pipeline>, InitError> {
         if let Some(ref filename) = self.0.output {
             let output_writer = OpenOptions::new()
                 .write(true)
@@ -62,7 +63,7 @@ impl<'a> PipelineBuilder<'a> {
         }
     }
 
-    pub fn build_parser<I>(&self) -> Result<impl Parser<Input = I, Output = ()>, String>
+    pub fn build_parser<I>(&self) -> Result<impl Parser<Input = I, Output = ()>, InitError>
     where
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
