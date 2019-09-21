@@ -9,6 +9,7 @@ use combine::parser::sequence::between;
 use combine::stream::Stream;
 use combine::{combine_parse_partial, combine_parser_impl, parse_mode, parser};
 
+use crate::error::PipelineError;
 use crate::filter::Filter;
 use crate::json_path::JsonPath;
 use crate::json_value::JsonValue;
@@ -63,11 +64,11 @@ impl ParserState {
         self.0.filter.is_subpath(&self.0.pos.borrow())
     }
 
-    fn ingest(&self, item: JsonValue) -> Result<(), String> {
+    fn ingest(&self, item: JsonValue) -> Result<(), PipelineError> {
         self.0.pipeline.borrow_mut().ingest(item)
     }
 
-    pub fn finish(&self) -> Result<(), String> {
+    pub fn finish(&self) -> Result<(), PipelineError> {
         self.0.pipeline.borrow_mut().finish()
     }
 }

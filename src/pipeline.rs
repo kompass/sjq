@@ -1,20 +1,21 @@
 use std::cell::Cell;
 use std::io::Write;
 
+use crate::error::PipelineError;
 use crate::json_path::JsonPath;
 use crate::json_value::{JsonValue, NumberVal};
 use crate::pipeline_builder::StageArg;
 
 pub trait Pipeline {
     /// Ingest stream items one by one, in the right order.
-    fn ingest(&mut self, item: JsonValue) -> Result<(), String>;
+    fn ingest(&mut self, item: JsonValue) -> Result<(), PipelineError>;
 
     /// Do the necessary when the stream is done.
     /// After this, the Pipeline returns in default mode,
     /// like if it ingested nothing.
     /// It has to call the finish method of its output(s).
     /// The main use of this method is for aggregating stages.
-    fn finish(&mut self) -> Result<(), String>;
+    fn finish(&mut self) -> Result<(), PipelineError>;
 }
 
 pub struct WriteStage<W: Write>(W);
@@ -26,13 +27,13 @@ impl<W: Write> WriteStage<W> {
 }
 
 impl<W: Write> Pipeline for WriteStage<W> {
-    fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
+    fn ingest(&mut self, item: JsonValue) -> Result<(), PipelineError> {
         serde_json::to_writer(&mut self.0, &item).unwrap();
         writeln!(&mut self.0).unwrap();
         Ok(())
     }
 
-    fn finish(&mut self) -> Result<(), String> {
+    fn finish(&mut self) -> Result<(), PipelineError> {
         Ok(())
     }
 }
@@ -46,13 +47,13 @@ impl<W: Write> WritePrettyStage<W> {
 }
 
 impl<W: Write> Pipeline for WritePrettyStage<W> {
-    fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
+    fn ingest(&mut self, item: JsonValue) -> Result<(), PipelineError> {
         serde_json::to_writer_pretty(&mut self.0, &item).unwrap();
         writeln!(&mut self.0).unwrap();
         Ok(())
     }
 
-    fn finish(&mut self) -> Result<(), String> {
+    fn finish(&mut self) -> Result<(), PipelineError> {
         Ok(())
     }
 }
@@ -95,17 +96,17 @@ impl AddFieldStage {
 }
 
 impl Pipeline for AddFieldStage {
-    fn ingest(&mut self, mut item: JsonValue) -> Result<(), String> {
+    fn ingest(&mut self, mut item: JsonValue) -> Result<(), PipelineError> {
         if let JsonValue::Object(ref mut obj) = item {
             obj.insert(self.key.clone(), self.value.clone());
 
             self.output.ingest(item)
         } else {
-            Err("Can't add a field to a non-object value.".to_string())
+            Err(PipelineError::NotAnObject{value: item})
         }
     }
 
-    fn finish(&mut self) -> Result<(), String> {
+    fn finish(&mut self) -> Result<(), PipelineError> {
         self.output.finish()
     }
 }
@@ -144,7 +145,7 @@ impl SumStage {
 }
 
 impl Pipeline for SumStage {
-    fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
+    fn ingest(&mut self, item: JsonValue) -> Result<(), PipelineError> {
         if let Some(item) = item.select(&self.summed_value) {
             if let JsonValue::Number(item_val) = item {
                 match (self.acc.get(), item_val) {
@@ -163,18 +164,18 @@ impl Pipeline for SumStage {
                     }
                 }
             } else {
-                return Err("Impossible to sum a non-number value.".to_string());
+                return Err(PipelineError::NotANumber{value: item.clone(), path: self.summed_value.clone()});
             }
 
             Ok(())
         } else if self.strict {
-            Err("Missing summed value.".to_string())
+            Err(PipelineError::MissingValue{path: self.summed_value.clone()})
         } else {
             Ok(())
         }
     }
 
-    fn finish(&mut self) -> Result<(), String> {
+    fn finish(&mut self) -> Result<(), PipelineError> {
         self.output
             .ingest(JsonValue::Number(
                 self.acc.get().unwrap_or(NumberVal::Integer(0)),
@@ -226,7 +227,7 @@ impl MeanStage {
 }
 
 impl Pipeline for MeanStage {
-    fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
+    fn ingest(&mut self, item: JsonValue) -> Result<(), PipelineError> {
         if let Some(item) = item.select(&self.meaned_value) {
             if let JsonValue::Number(item_val) = item {
                 match item_val {
@@ -234,20 +235,20 @@ impl Pipeline for MeanStage {
                     &NumberVal::Float(i) => self.acc.set(self.acc.get() + i),
                 }
             } else {
-                return Err("Impossible to mean a non-number value.".to_string());
+                return Err(PipelineError::NotANumber{value: item.clone(), path: self.meaned_value.clone()});
             }
 
             self.count.set(self.count.get() + 1);
 
             Ok(())
         } else if self.strict {
-            Err("Missing meaned value.".to_string())
+            Err(PipelineError::MissingValue{path: self.meaned_value.clone()})
         } else {
             Ok(())
         }
     }
 
-    fn finish(&mut self) -> Result<(), String> {
+    fn finish(&mut self) -> Result<(), PipelineError> {
         if self.count.get() > 0 {
             let mean = self.acc.get() / self.count.get() as f64;
 
@@ -294,7 +295,7 @@ impl SelectStage {
 }
 
 impl Pipeline for SelectStage {
-    fn ingest(&mut self, item: JsonValue) -> Result<(), String> {
+    fn ingest(&mut self, item: JsonValue) -> Result<(), PipelineError> {
         if let Some(item) = item.select(&self.selected_value) {
             self.output.ingest(item.clone())
         } else {
@@ -302,7 +303,7 @@ impl Pipeline for SelectStage {
         }
     }
 
-    fn finish(&mut self) -> Result<(), String> {
+    fn finish(&mut self) -> Result<(), PipelineError> {
         self.output.finish().unwrap();
 
         Ok(())
