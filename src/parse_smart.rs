@@ -93,14 +93,16 @@ parser! {
     fn object_smart[I](state: ParserState, max_text_length: usize)(I) -> ()
     where [I: Stream<Item = char>]
     {
-        let state_clone1 = state.clone();
-        let state_clone2 = state.clone();
+        let field = {
+            let state_clone1 = state.clone();
+            let state_clone2 = state.clone();
 
-        let field = string_lex(*max_text_length).skip(token_lex(':')).then(move |field_name| {
-            state_clone1.enter_node(&field_name);
+            string_lex(*max_text_length).skip(token_lex(':')).then(move |field_name| {
+                state_clone1.enter_node(&field_name);
 
-            json_smart(state.clone(), *max_text_length)
-        }).map(move |_| state_clone2.exit_node());
+                json_smart(state.clone(), *max_text_length)
+            }).map(move |_| state_clone2.exit_node())
+        };
 
         between(
             token_lex('{'),
