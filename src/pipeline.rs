@@ -48,9 +48,8 @@ impl<W: Write> WritePrettyStage<W> {
 
 impl<W: Write> Pipeline for WritePrettyStage<W> {
     fn ingest(&mut self, item: JsonValue) -> Result<(), PipelineError> {
-        serde_json::to_writer_pretty(&mut self.0, &item).unwrap();
-        writeln!(&mut self.0).unwrap();
-        Ok(())
+        serde_json::to_writer_pretty(&mut self.0, &item).map_err(|_| PipelineError::UnableToWriteOuptut)?;
+        writeln!(&mut self.0).map_err(|_| PipelineError::UnableToWriteOuptut)
     }
 
     fn finish(&mut self) -> Result<(), PipelineError> {
@@ -179,9 +178,8 @@ impl Pipeline for SumStage {
         self.output
             .ingest(JsonValue::Number(
                 self.acc.get().unwrap_or(NumberVal::Integer(0)),
-            ))
-            .unwrap();
-        self.output.finish().unwrap();
+            ))?;
+        self.output.finish()?;
         self.acc.replace(None);
 
         Ok(())
@@ -253,11 +251,10 @@ impl Pipeline for MeanStage {
             let mean = self.acc.get() / self.count.get() as f64;
 
             self.output
-                .ingest(JsonValue::Number(NumberVal::Float(mean)))
-                .unwrap();
+                .ingest(JsonValue::Number(NumberVal::Float(mean)))?;
         }
 
-        self.output.finish().unwrap();
+        self.output.finish()?;
         self.acc.set(0.0f64);
         self.count.set(0u64);
 
@@ -304,7 +301,7 @@ impl Pipeline for SelectStage {
     }
 
     fn finish(&mut self) -> Result<(), PipelineError> {
-        self.output.finish().unwrap();
+        self.output.finish()?;
 
         Ok(())
     }

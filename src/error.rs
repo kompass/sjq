@@ -30,5 +30,7 @@ pub enum PipelineError {
     #[fail(display = "missing value at {}", path)]
     MissingValue {
         path: JsonPath,
-    }
+    },
+    #[fail(display = "unable to write to output")]
+    UnableToWriteOuptut
 }
