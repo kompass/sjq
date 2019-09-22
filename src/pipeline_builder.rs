@@ -45,7 +45,9 @@ impl<'a> PipelineBuilder<'a> {
                 .create(true)
                 .create_new(self.0.force_new)
                 .open(filename)
-                .map_err(|_: std::io::Error| InitError::UnableToOpenFile{filename: filename.to_string()})?;
+                .map_err(|_: std::io::Error| InitError::UnableToOpenFile {
+                    filename: filename.to_string(),
+                })?;
 
             if self.0.pretty {
                 Ok(Box::new(WritePrettyStage::new(output_writer)))
@@ -69,8 +71,7 @@ impl<'a> PipelineBuilder<'a> {
         I::Error: ParseError<I::Item, I::Range, I::Position>,
     {
         let output = self.build_output()?;
-        let (filter, pipeline) =
-            parse_query(self.0.max_text_length, output, &self.0.query)?;
+        let (filter, pipeline) = parse_query(self.0.max_text_length, output, &self.0.query)?;
         let state = ParserState::new(pipeline, filter);
         let state_finisher = state.clone();
 

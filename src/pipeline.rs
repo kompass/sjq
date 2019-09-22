@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::io::Write;
 
-use crate::error::PipelineError;
+use crate::error::{InitError, PipelineError};
 use crate::json_path::JsonPath;
 use crate::json_value::{JsonValue, NumberVal};
 use crate::pipeline_builder::StageArg;
@@ -28,7 +28,8 @@ impl<W: Write> WriteStage<W> {
 
 impl<W: Write> Pipeline for WriteStage<W> {
     fn ingest(&mut self, item: JsonValue) -> Result<(), PipelineError> {
-        serde_json::to_writer(&mut self.0, &item).map_err(|_| PipelineError::UnableToWriteOuptut)?;
+        serde_json::to_writer(&mut self.0, &item)
+            .map_err(|_| PipelineError::UnableToWriteOuptut)?;
         writeln!(&mut self.0).map_err(|_| PipelineError::UnableToWriteOuptut)
     }
 
@@ -47,7 +48,8 @@ impl<W: Write> WritePrettyStage<W> {
 
 impl<W: Write> Pipeline for WritePrettyStage<W> {
     fn ingest(&mut self, item: JsonValue) -> Result<(), PipelineError> {
-        serde_json::to_writer_pretty(&mut self.0, &item).map_err(|_| PipelineError::UnableToWriteOuptut)?;
+        serde_json::to_writer_pretty(&mut self.0, &item)
+            .map_err(|_| PipelineError::UnableToWriteOuptut)?;
         writeln!(&mut self.0).map_err(|_| PipelineError::UnableToWriteOuptut)
     }
 
@@ -74,20 +76,34 @@ impl AddFieldStage {
     pub fn from_args(
         output: Box<dyn Pipeline>,
         args: &[StageArg],
-    ) -> Result<Box<dyn Pipeline>, String> {
+    ) -> Result<Box<dyn Pipeline>, InitError> {
         if args.len() != 2 {
-            Err("add_field : Wrong number of arguments.".to_string())
+            Err(InitError::StageWrongNumberArgs {
+                stage_name: "add_field".to_string(),
+                expected: 2,
+                got: args.len(),
+            })
         } else {
-            if let (StageArg::String(ref key), StageArg::String(ref value)) =
-                (args.get(0).unwrap(), args.get(1).unwrap()) // We can unwrap because args.len() == 2
-            {
-                Ok(Box::new(Self::new(
-                    output,
-                    &key,
-                    JsonValue::normalized_string(&value),
-                )))
+            if let StageArg::String(ref key) = args.get(0).unwrap() {
+                // We can unwrap because args.len() == 2
+                if let StageArg::String(ref value) = args.get(1).unwrap() {
+                    // We can unwrap because args.len() == 2
+                    Ok(Box::new(Self::new(
+                        output,
+                        &key,
+                        JsonValue::normalized_string(&value),
+                    )))
+                } else {
+                    Err(InitError::StageWrongArgType {
+                        stage_name: "add_field".to_string(),
+                        arg_pos: 2,
+                    })
+                }
             } else {
-                Err("add_field : Wrong type of arguments.".to_string())
+                Err(InitError::StageWrongArgType {
+                    stage_name: "add_field".to_string(),
+                    arg_pos: 1,
+                })
             }
         }
     }
@@ -100,7 +116,7 @@ impl Pipeline for AddFieldStage {
 
             self.output.ingest(item)
         } else {
-            Err(PipelineError::NotAnObject{value: item})
+            Err(PipelineError::NotAnObject { value: item })
         }
     }
 
@@ -129,14 +145,22 @@ impl SumStage {
     pub fn from_args(
         output: Box<dyn Pipeline>,
         args: &[StageArg],
-    ) -> Result<Box<dyn Pipeline>, String> {
+    ) -> Result<Box<dyn Pipeline>, InitError> {
         if args.len() != 1 {
-            Err("sum : Wrong number of arguments.".to_string())
+            Err(InitError::StageWrongNumberArgs {
+                stage_name: "sum".to_string(),
+                expected: 1,
+                got: args.len(),
+            })
         } else {
-            if let StageArg::Path(ref path) = args.get(0).unwrap() { // We can unwrap because args.len() == 1
+            if let StageArg::Path(ref path) = args.get(0).unwrap() {
+                // We can unwrap because args.len() == 1
                 Ok(Box::new(Self::new(output, path.clone(), false)))
             } else {
-                Err("sum : Wrong type of arguments.".to_string())
+                Err(InitError::StageWrongArgType {
+                    stage_name: "sum".to_string(),
+                    arg_pos: 1,
+                })
             }
         }
     }
@@ -162,22 +186,26 @@ impl Pipeline for SumStage {
                     }
                 }
             } else {
-                return Err(PipelineError::NotANumber{value: item.clone(), path: self.summed_value.clone()});
+                return Err(PipelineError::NotANumber {
+                    value: item.clone(),
+                    path: self.summed_value.clone(),
+                });
             }
 
             Ok(())
         } else if self.strict {
-            Err(PipelineError::MissingValue{path: self.summed_value.clone()})
+            Err(PipelineError::MissingValue {
+                path: self.summed_value.clone(),
+            })
         } else {
             Ok(())
         }
     }
 
     fn finish(&mut self) -> Result<(), PipelineError> {
-        self.output
-            .ingest(JsonValue::Number(
-                self.acc.get().unwrap_or(NumberVal::Integer(0)),
-            ))?;
+        self.output.ingest(JsonValue::Number(
+            self.acc.get().unwrap_or(NumberVal::Integer(0)),
+        ))?;
         self.output.finish()?;
         self.acc.replace(None);
 
@@ -210,14 +238,22 @@ impl MeanStage {
     pub fn from_args(
         output: Box<dyn Pipeline>,
         args: &[StageArg],
-    ) -> Result<Box<dyn Pipeline>, String> {
+    ) -> Result<Box<dyn Pipeline>, InitError> {
         if args.len() != 1 {
-            Err("mean : Wrong number of arguments.".to_string())
+            Err(InitError::StageWrongNumberArgs {
+                stage_name: "mean".to_string(),
+                expected: 1,
+                got: args.len(),
+            })
         } else {
-            if let StageArg::Path(ref path) = args.get(0).unwrap() { // We can unwrap because args.len() == 1
+            if let StageArg::Path(ref path) = args.get(0).unwrap() {
+                // We can unwrap because args.len() == 1
                 Ok(Box::new(Self::new(output, path.clone(), false)))
             } else {
-                Err("mean : Wrong type of arguments.".to_string())
+                Err(InitError::StageWrongArgType {
+                    stage_name: "mean".to_string(),
+                    arg_pos: 1,
+                })
             }
         }
     }
@@ -232,14 +268,19 @@ impl Pipeline for MeanStage {
                     &NumberVal::Float(i) => self.acc.set(self.acc.get() + i),
                 }
             } else {
-                return Err(PipelineError::NotANumber{value: item.clone(), path: self.meaned_value.clone()});
+                return Err(PipelineError::NotANumber {
+                    value: item.clone(),
+                    path: self.meaned_value.clone(),
+                });
             }
 
             self.count.set(self.count.get() + 1);
 
             Ok(())
         } else if self.strict {
-            Err(PipelineError::MissingValue{path: self.meaned_value.clone()})
+            Err(PipelineError::MissingValue {
+                path: self.meaned_value.clone(),
+            })
         } else {
             Ok(())
         }
@@ -277,14 +318,22 @@ impl SelectStage {
     pub fn from_args(
         output: Box<dyn Pipeline>,
         args: &[StageArg],
-    ) -> Result<Box<dyn Pipeline>, String> {
+    ) -> Result<Box<dyn Pipeline>, InitError> {
         if args.len() != 1 {
-            Err("select : Wrong number of arguments.".to_string())
+            Err(InitError::StageWrongNumberArgs {
+                stage_name: "mean".to_string(),
+                expected: 1,
+                got: args.len(),
+            })
         } else {
-            if let StageArg::Path(ref path) = args.get(0).unwrap() { // We can unwrap because args.len() == 1
+            if let StageArg::Path(ref path) = args.get(0).unwrap() {
+                // We can unwrap because args.len() == 1
                 Ok(Box::new(Self::new(output, path.clone())))
             } else {
-                Err("select : Wrong type of arguments.".to_string())
+                Err(InitError::StageWrongArgType {
+                    stage_name: "select".to_string(),
+                    arg_pos: 1,
+                })
             }
         }
     }

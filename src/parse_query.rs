@@ -116,7 +116,7 @@ where
     sep_by1::<Vec<_>, _, _>(filter_expr, token_lex(','))
         .map(|mut v| {
             if v.len() == 1 {
-                v.pop().unwrap()
+                v.pop().unwrap() // We can unwrap because v.len() == 1
             } else {
                 Filter::Union(v)
             }
@@ -152,7 +152,9 @@ pub fn parse_query<'a>(
     let (filter, stages) = parser
         .easy_parse(State::new(query))
         .map(|(filter, _)| filter)
-        .map_err(|err| InitError::WrongQuerySyntax{position: err.position.column})?;
+        .map_err(|err| InitError::WrongQuerySyntax {
+            position: err.position.column,
+        })?;
 
     let mut pipeline = output;
 
@@ -162,10 +164,11 @@ pub fn parse_query<'a>(
             "mean" => MeanStage::from_args(pipeline, &args),
             "sum" => SumStage::from_args(pipeline, &args),
             "select" => SelectStage::from_args(pipeline, &args),
-            &_ => Err("Unknown stage name.".to_string()),
-        }
-        .unwrap();
+            &_ => Err(InitError::StageUnknownName {
+                unknown_name: stage_ident.to_string(),
+            }),
+        }?;
     }
 
-    Ok((filter, pipeline)) // TODO: gérer les erreurs de syntaxe en virant l'unwrap
+    Ok((filter, pipeline))
 }

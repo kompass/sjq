@@ -21,14 +21,16 @@ use std::convert::From;
 pub use crate::args_parser::ArgStruct;
 use crate::pipeline_builder::PipelineBuilder;
 
-pub fn parse_from_args(args: ArgStruct) -> Result<(), failure::Error> { // ParseError<Stream<ReadStream<Stdin>>>
+pub fn parse_from_args(args: ArgStruct) -> Result<(), failure::Error> {
+    // ParseError<Stream<ReadStream<Stdin>>>
     let pipeline_builder = PipelineBuilder::from(&args);
 
     let stream = pipeline_builder.build_input_stream()?;
 
     let mut parser = pipeline_builder.build_parser()?;
 
-    parser.easy_parse(stream)
+    parser
+        .easy_parse(stream)
         .map(|(output, _)| output)
         .map_err(|err| err.into())
 }

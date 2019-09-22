@@ -102,7 +102,7 @@ impl std::fmt::Display for JsonPath {
         for step in &self.0 {
             match step {
                 JsonPathStep::Field(node_name) => write!(f, ".\"{}\"", node_name)?,
-                JsonPathStep::Index(index) => write!(f, "[{}]", index)?
+                JsonPathStep::Index(index) => write!(f, "[{}]", index)?,
             }
         }
 
