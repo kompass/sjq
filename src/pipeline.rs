@@ -28,9 +28,8 @@ impl<W: Write> WriteStage<W> {
 
 impl<W: Write> Pipeline for WriteStage<W> {
     fn ingest(&mut self, item: JsonValue) -> Result<(), PipelineError> {
-        serde_json::to_writer(&mut self.0, &item).unwrap();
-        writeln!(&mut self.0).unwrap();
-        Ok(())
+        serde_json::to_writer(&mut self.0, &item).map_err(|_| PipelineError::UnableToWriteOuptut)?;
+        writeln!(&mut self.0).map_err(|_| PipelineError::UnableToWriteOuptut)
     }
 
     fn finish(&mut self) -> Result<(), PipelineError> {
@@ -80,7 +79,7 @@ impl AddFieldStage {
             Err("add_field : Wrong number of arguments.".to_string())
         } else {
             if let (StageArg::String(ref key), StageArg::String(ref value)) =
-                (args.get(0).unwrap(), args.get(1).unwrap())
+                (args.get(0).unwrap(), args.get(1).unwrap()) // We can unwrap because args.len() == 2
             {
                 Ok(Box::new(Self::new(
                     output,
@@ -134,7 +133,7 @@ impl SumStage {
         if args.len() != 1 {
             Err("sum : Wrong number of arguments.".to_string())
         } else {
-            if let StageArg::Path(ref path) = args.get(0).unwrap() {
+            if let StageArg::Path(ref path) = args.get(0).unwrap() { // We can unwrap because args.len() == 1
                 Ok(Box::new(Self::new(output, path.clone(), false)))
             } else {
                 Err("sum : Wrong type of arguments.".to_string())
@@ -215,7 +214,7 @@ impl MeanStage {
         if args.len() != 1 {
             Err("mean : Wrong number of arguments.".to_string())
         } else {
-            if let StageArg::Path(ref path) = args.get(0).unwrap() {
+            if let StageArg::Path(ref path) = args.get(0).unwrap() { // We can unwrap because args.len() == 1
                 Ok(Box::new(Self::new(output, path.clone(), false)))
             } else {
                 Err("mean : Wrong type of arguments.".to_string())
@@ -282,7 +281,7 @@ impl SelectStage {
         if args.len() != 1 {
             Err("select : Wrong number of arguments.".to_string())
         } else {
-            if let StageArg::Path(ref path) = args.get(0).unwrap() {
+            if let StageArg::Path(ref path) = args.get(0).unwrap() { // We can unwrap because args.len() == 1
                 Ok(Box::new(Self::new(output, path.clone())))
             } else {
                 Err("select : Wrong type of arguments.".to_string())
