@@ -19,9 +19,11 @@ fn validate_max_text_length(val: String) -> Result<(), String> {
 /// Filter, map and aggregate huge or streaming json content
 #[derive(StructOpt, Debug)]
 #[structopt(
-    rename_all = "kebab-case",
+    author,
+    about,
+    rename_all = "kebab-case", // It's the default option but I keep it to be explicit
     max_term_width = 0,
-    raw(after_help = "include_str!(\"../help/query_syntax.txt\")")
+    after_help(include_str!("../help/query_syntax.txt"))
 )]
 pub struct ArgStruct {
     /// Writes the output into a file
@@ -45,7 +47,7 @@ pub struct ArgStruct {
         short,
         long,
         default_value = "4096",
-        raw(validator = "validate_max_text_length")
+        validator(validate_max_text_length)
     )]
     pub max_text_length: usize,
 
