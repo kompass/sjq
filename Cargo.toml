@@ -13,7 +13,7 @@ combine = "3.8"
 either = "1.5"
 exitfailure = "0.5"
 failure = "0.1"
-lexical = "2.2"
+lexical = "4.0"
 once_cell = "0.2"
 regex = "1.2"
 serde = { version = "1.0", features = ["derive"] }

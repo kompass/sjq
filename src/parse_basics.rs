@@ -45,7 +45,7 @@ where
 {
     let expr = count_min_max::<String, _>(1, *&*INTEGER_PART_MAX_LENGTH, digit());
 
-    expr.map(|s: String| lexical::try_parse(&s).unwrap())
+    expr.map(|s: String| lexical::parse(&s).unwrap())
 }
 
 pub fn number_expr<I>() -> impl Parser<Input = I, Output = NumberVal>
@@ -70,9 +70,9 @@ where
     expr.map(|s: String| {
         let float_evidences = ['.', 'e', 'E'];
         if s.contains(float_evidences.as_ref()) {
-            NumberVal::Float(lexical::try_parse(&s).unwrap()) // TODO: Let the user choose try_parse_lossy or not
+            NumberVal::Float(lexical::parse(&s).unwrap())
         } else {
-            NumberVal::Integer(lexical::try_parse(&s).unwrap())
+            NumberVal::Integer(lexical::parse(&s).unwrap())
         }
     })
 }
