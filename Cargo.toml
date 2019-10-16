@@ -10,6 +10,7 @@ readme = "README.md"
 
 [dependencies]
 combine = "3.8"
+combine-elastic-buffered-stream = "0.1.0"
 either = "1.5"
 exitfailure = "0.5"
 failure = "0.1"
