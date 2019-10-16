@@ -3,7 +3,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 use combine::error::ParseError;
-use combine::parser::char::{alpha_num, digit, letter, spaces, string};
+use combine::parser::byte::{alpha_num, digit, letter, spaces, bytes};
 use combine::parser::choice::optional;
 use combine::parser::combinator::recognize;
 use combine::parser::item::{any, none_of, one_of, token};
@@ -40,36 +40,39 @@ pub static NUMBER_MAX_LENGTH: Lazy<usize> = Lazy::new(|| {
 
 pub fn index_expr<I>() -> impl Parser<Input = I, Output = u64>
 where
-    I: Stream<Item = char>,
+    I: Stream<Item = u8>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let expr = count_min_max::<String, _>(1, *&*INTEGER_PART_MAX_LENGTH, digit());
+    let expr = count_min_max::<Vec<u8>, _>(1, *&*INTEGER_PART_MAX_LENGTH, digit());
 
-    expr.map(|s: String| lexical::parse(&s).unwrap())
+    expr.map(|v: Vec<u8>| {
+        let s = String::from_utf8(v).unwrap();
+        lexical::parse(&s).unwrap()
+    })
 }
 
 pub fn number_expr<I>() -> impl Parser<Input = I, Output = NumberVal>
 where
-    I: Stream<Item = char>,
+    I: Stream<Item = u8>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let expr = recognize::<String, _>((
-        optional(one_of("-+".chars())),
+    let expr = recognize::<Vec<u8>, _>((
+        optional(one_of("-+".bytes())),
         skip_count_min_max(1, *&*INTEGER_PART_MAX_LENGTH, digit()),
         optional((
-            token('.'),
+            token(b'.'),
             skip_count_min_max(1, *&*FRACTIONAL_PART_MAX_LENGTH, digit()),
         )),
         optional((
-            one_of("eE".chars()),
-            optional(one_of("-+".chars())),
+            one_of("eE".bytes()),
+            optional(one_of("-+".bytes())),
             skip_count_min_max(1, *&*EXPONENT_MAX_LENGTH, digit()),
         )),
     ));
 
-    expr.map(|s: String| {
-        let float_evidences = ['.', 'e', 'E'];
-        if s.contains(float_evidences.as_ref()) {
+    expr.map(|s: Vec<u8>| {
+        let float_evidences = [b'.', b'e', b'E'];
+        if float_evidences.iter().any(|c| s.contains(c)) {
             NumberVal::Float(lexical::parse(&s).unwrap())
         } else {
             NumberVal::Integer(lexical::parse(&s).unwrap())
@@ -79,65 +82,65 @@ where
 
 pub fn string_expr<I>(max_length: usize) -> impl Parser<Input = I, Output = String>
 where
-    I: Stream<Item = char>,
+    I: Stream<Item = u8>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     between(
-        token('"'),
-        token('"'),
-        count::<String, _>(
+        token(b'"'),
+        token(b'"'),
+        count::<Vec<u8>, _>(
             max_length,
-            (token('\\').and(any()).map(|x| x.1)).or(none_of(Some('"').iter().cloned())),
+            (token(b'\\').and(any()).map(|x| x.1)).or(none_of(Some(b'"').iter().cloned())),
         ),
-    ) // TODO: Check special escaped characters
+    ).map(|v: Vec<u8>| String::from_utf8(v).unwrap()) // TODO: Check special escaped characters
 }
 
 pub fn regex_expr<I>(max_length: usize) -> impl Parser<Input = I, Output = Regex>
 where
-    I: Stream<Item = char>,
+    I: Stream<Item = u8>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     let expr = between(
-        token('/'),
-        token('/'),
-        count::<String, _>(
+        token(b'/'),
+        token(b'/'),
+        count::<Vec<u8>, _>(
             max_length,
-            (token('\\').and(token('/')).map(|x| x.1)).or(none_of(Some('/').iter().cloned())),
+            (token(b'\\').and(token(b'/')).map(|x| x.1)).or(none_of(Some(b'/').iter().cloned())),
         ),
     );
 
-    expr.map(|s| Regex::new(&s).unwrap())
+    expr.map(|s| Regex::new(&String::from_utf8(s).unwrap()).unwrap())
 }
 
 pub fn ident_expr<I>(max_length: usize) -> impl Parser<Input = I, Output = String>
 where
-    I: Stream<Item = char>,
+    I: Stream<Item = u8>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     letter()
-        .and(count_min_max::<String, _>(
+        .and(count_min_max::<Vec<u8>, _>(
             0,
             max_length,
-            alpha_num().or(token('_')),
+            alpha_num().or(token(b'_')),
         ))
         .map(move |(first, mut rest)| {
             rest.insert(0, first);
-            rest
+            String::from_utf8(rest).unwrap()
         })
 }
 
-pub fn keyword_expr<I>(keyword: &'static str) -> impl Parser<Input = I, Output = ()>
+pub fn keyword_expr<I>(keyword: &'static [u8]) -> impl Parser<Input = I, Output = ()>
 where
-    I: Stream<Item = char>,
+    I: Stream<Item = u8>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    string(keyword).map(|_| ())
+    bytes(keyword).map(|_| ())
 }
 
 pub fn lex<P>(p: P) -> impl Parser<Input = P::Input, Output = P::Output>
 where
     P: Parser,
-    P::Input: Stream<Item = char>,
+    P::Input: Stream<Item = u8>,
     <P::Input as StreamOnce>::Error: ParseError<
         <P::Input as StreamOnce>::Item,
         <P::Input as StreamOnce>::Range,
@@ -149,7 +152,7 @@ where
 
 pub fn number_lex<I>() -> impl Parser<Input = I, Output = NumberVal>
 where
-    I: Stream<Item = char>,
+    I: Stream<Item = u8>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(number_expr())
@@ -157,7 +160,7 @@ where
 
 pub fn string_lex<I>(max_length: usize) -> impl Parser<Input = I, Output = String>
 where
-    I: Stream<Item = char>,
+    I: Stream<Item = u8>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(string_expr(max_length))
@@ -165,7 +168,7 @@ where
 
 pub fn keyword_lex<I>(keyword: &'static str) -> impl Parser<Input = I, Output = ()>
 where
-    I: Stream<Item = char>,
+    I: Stream<Item = u8>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(keyword_expr(keyword))
@@ -173,7 +176,7 @@ where
 
 pub fn ident_lex<I>(max_length: usize) -> impl Parser<Input = I, Output = String>
 where
-    I: Stream<Item = char>,
+    I: Stream<Item = u8>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(ident_expr(max_length))
@@ -181,7 +184,7 @@ where
 
 pub fn token_lex<I>(c: char) -> impl Parser<Input = I, Output = ()>
 where
-    I: Stream<Item = char>,
+    I: Stream<Item = u8>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     lex(token(c)).map(|_| ())
